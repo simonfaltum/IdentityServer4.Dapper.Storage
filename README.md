@@ -33,6 +33,7 @@ In order to use this package you will need the standard IdentityServer4 NuGet pa
 
 ```
 dotnet add package IdentityServer4.Dapper.Storage
+dotnet add package IdentityServer4.Storage.DatabaseScripts.DbUp
 ```
 
 ### Get IdentityServer4.Dapper.Storage working
@@ -138,3 +139,4 @@ This time the schema should be specified **without* brackets. I am aware it's co
 ```
 
 Once this step has been done, it will use the Schema and ConnectionString provided once you call the UpgradeDatabase() function on the IIdentityServerMigrations interface.
+
