@@ -36,6 +36,12 @@ dotnet add package VeryGood.IdentityServer4.Dapper.Storage
 dotnet add package VeryGood.IdentityServer4.Storage.DatabaseScripts.DbUp
 ```
 
+Once installed, the library is in the following namespace
+
+```
+using IdentityServer4.Dapper.Storage;
+```
+
 ### Get IdentityServer4.Dapper.Storage working
 
 In order to enable the IdentityServer4.Dapper.Storage, just invoke the middleware following the standard .AddIdentityServer call.
