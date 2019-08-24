@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <Company>Very Good Consulting Company</Company>
+    <Authors>Simon Faltum</Authors>
+    <Version>2.5.2.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="9.0.0" />
+    <PackageReference Include="Dapper" Version="1.60.6" />
+    <PackageReference Include="IdentityServer4" Version="2.5.2" />
+  </ItemGroup>
+
+</Project>

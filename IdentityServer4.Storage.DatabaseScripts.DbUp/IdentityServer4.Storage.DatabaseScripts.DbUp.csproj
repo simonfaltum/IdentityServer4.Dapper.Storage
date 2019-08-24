@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <Version>2.5.2.0</Version>
+    <Authors>Simon Faltum</Authors>
+    <Company>Very Good Consulting Company</Company>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="EveryRun\EnsureSchema.sql" />
+    <None Remove="IdentityServerScripts\20190718123000-CreateIdentityServer.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="EveryRun\EnsureSchema.sql" />
+    <EmbeddedResource Include="IdentityServerScripts\20190718123000-CreateIdentityServer.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="dbup-core" Version="4.2.0" />
+    <PackageReference Include="dbup-sqlserver" Version="4.2.0" />
+    <PackageReference Include="IdentityServer4" Version="2.5.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IdentityServer4.Dapper.Storage\IdentityServer4.Dapper.Storage.csproj" />
+  </ItemGroup>
+
+</Project>
