@@ -5,6 +5,14 @@
     <Version>2.5.2.0</Version>
     <Authors>Simon Faltum</Authors>
     <Company>Very Good Consulting Company</Company>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Description>Contains SQL scripts and functionality to create the necessary tables for IdentityServer4 Persistance Storage, on a given ConnectionString + Db Schema</Description>
+    <PackageProjectUrl>https://github.com/simonfaltum/IdentityServer4.Dapper.Storage</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/simonfaltum/IdentityServer4.Dapper.Storage</RepositoryUrl>
+    <RepositoryType>Git</RepositoryType>
+    <PackageId>VeryGood.IdentityServer4.Storage.DatabaseScripts.DbUp</PackageId>
+    <Product>VeryGood.IdentityServer4.Storage.DatabaseScripts.DbUp</Product>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>

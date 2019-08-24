@@ -5,6 +5,15 @@
     <Company>Very Good Consulting Company</Company>
     <Authors>Simon Faltum</Authors>
     <Version>2.5.2.0</Version>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Description>The library enables persistence storing for configuration and operational data the same way the EntitiyFramework library does (IdentityServer4.EntityFramework).</Description>
+    <PackageProjectUrl>https://github.com/simonfaltum/IdentityServer4.Dapper.Storage</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/simonfaltum/IdentityServer4.Dapper.Storage</RepositoryUrl>
+    <RepositoryType>Git</RepositoryType>
+    <PackageId>VeryGood.IdentityServer4.Dapper.Storage</PackageId>
+    <Product>VeryGood.IdentityServer4.Dapper.Storage</Product>
+    <PackageLicenseFile></PackageLicenseFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>

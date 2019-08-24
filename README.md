@@ -32,8 +32,8 @@ It does not depend on IdentityServer4 but in order to seed the database, it depe
 In order to use this package you will need the standard IdentityServer4 NuGet packages as well as this specific package.
 
 ```
-dotnet add package IdentityServer4.Dapper.Storage
-dotnet add package IdentityServer4.Storage.DatabaseScripts.DbUp
+dotnet add package VeryGood.IdentityServer4.Dapper.Storage
+dotnet add package VeryGood.IdentityServer4.Storage.DatabaseScripts.DbUp
 ```
 
 ### Get IdentityServer4.Dapper.Storage working
