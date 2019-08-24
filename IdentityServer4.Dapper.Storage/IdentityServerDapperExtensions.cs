@@ -91,7 +91,7 @@ namespace IdentityServer4.Dapper.Storage
         /// <param name="services"></param>
         /// <param name="dbProviderOptionsAction">Make sure to minimum set connectionstring here.</param>
         /// <returns></returns>
-        public static IServiceCollection AddAspNetIdentityDapperDbProviders(this IServiceCollection services, Action<DBProviderOptions> dbProviderOptionsAction = null)
+        public static IServiceCollection AddIdentityServerDapperDbProviders(this IServiceCollection services, Action<DBProviderOptions> dbProviderOptionsAction = null)
         {
             var options = GetDefaultOptions();
             dbProviderOptionsAction?.Invoke(options);
