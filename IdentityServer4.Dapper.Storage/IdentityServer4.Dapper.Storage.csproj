@@ -4,7 +4,7 @@
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <Company>Very Good Consulting Company</Company>
     <Authors>Simon Faltum</Authors>
-    <Version>2.5.2.0</Version>
+    <Version>2.5.3.0</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Description>The library enables persistence storing for configuration and operational data the same way the EntitiyFramework library does (IdentityServer4.EntityFramework).</Description>
     <PackageProjectUrl>https://github.com/simonfaltum/IdentityServer4.Dapper.Storage</PackageProjectUrl>
@@ -14,12 +14,14 @@
     <Product>VeryGood.IdentityServer4.Dapper.Storage</Product>
     <PackageLicenseFile></PackageLicenseFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <AssemblyVersion>2.5.3.0</AssemblyVersion>
+    <FileVersion>2.5.3.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="9.0.0" />
     <PackageReference Include="Dapper" Version="1.60.6" />
-    <PackageReference Include="IdentityServer4" Version="2.5.2" />
+    <PackageReference Include="IdentityServer4" Version="2.5.3" />
   </ItemGroup>
 
 </Project>

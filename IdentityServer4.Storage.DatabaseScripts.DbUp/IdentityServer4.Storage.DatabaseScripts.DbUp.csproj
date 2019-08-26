@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.2</TargetFramework>
-    <Version>2.5.2.0</Version>
+    <Version>2.5.3.0</Version>
     <Authors>Simon Faltum</Authors>
     <Company>Very Good Consulting Company</Company>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
@@ -28,7 +28,7 @@
   <ItemGroup>
     <PackageReference Include="dbup-core" Version="4.2.0" />
     <PackageReference Include="dbup-sqlserver" Version="4.2.0" />
-    <PackageReference Include="IdentityServer4" Version="2.5.2" />
+    <PackageReference Include="IdentityServer4" Version="2.5.3" />
   </ItemGroup>
 
   <ItemGroup>
