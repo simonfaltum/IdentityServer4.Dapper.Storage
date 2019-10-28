@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+﻿
 using Dapper;
 using IdentityServer4.Dapper.Storage.Entities;
 using IdentityServer4.Dapper.Storage.Options;
@@ -10,21 +10,21 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace IdentityServer4.Dapper.Storage.DataLayer
 {
     public class DefaultApiResourceProvider : IApiResourceProvider
     {
         private readonly DBProviderOptions _options;
-        private readonly IMapper _mapper;
         private readonly string _connectionString;
-        public DefaultApiResourceProvider(DBProviderOptions dBProviderOptions)
+        private readonly ILogger<DefaultApiResourceProvider> logger;
+
+        public DefaultApiResourceProvider(DBProviderOptions dBProviderOptions, ILogger<DefaultApiResourceProvider> logger)
         {
             this._options = dBProviderOptions ?? throw new ArgumentNullException(nameof(dBProviderOptions));
-            _mapper = new MapperConfiguration(cfg => cfg.AddProfile<IdServerDapperMapperProfile>())
-                .CreateMapper();
             _connectionString = dBProviderOptions.ConnectionString;
-
+            this.logger = logger;
         }
 
         public async Task<ApiResource> FindApiResourceAsync(string name)
@@ -34,110 +34,112 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                 return null;
             }
 
-            using (var connection = new SqlConnection(_connectionString))
+            await using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync();
+            var result = connection.QueryFirstOrDefaultAsync<Entities.ApiResources>($"select * from {_options.DbSchema}.ApiResources where Name = @Name", new { Name = name }, commandType: CommandType.Text);
+            var api = await result;
+                
+            if (api != null)
             {
-
-                var result = connection.QueryFirstOrDefaultAsync<Entities.ApiResources>($"select * from {_options.DbSchema}.ApiResources where Name = @Name", new { Name = name }, commandType: CommandType.Text);
-                var api = await result;
-                var apiResource = _mapper.Map<ApiResource>(api);
-                if (api != null)
+                var apiResource = api.MapApiResource();
+                var secrets = await GetSecretByApiResourceId(api.Id);
+                if (secrets != null)
                 {
-                    var secrets = await GetSecretByApiResourceId(api.Id);
-                    if (secrets != null)
-                    {
-                        var apiSecrets = _mapper.Map<List<Secret>>(secrets);
-                        apiResource.ApiSecrets = apiSecrets;
-                    }
-                    var scopes = await GetScopesByApiResourceId(api.Id);
-                    if (scopes != null)
-                    {
-                        var apiScopes = _mapper.Map<List<Scope>>(scopes);
-                        apiResource.Scopes = apiScopes;
-                    }
-                    var apiClaims = await GetClaimsByApiId(api.Id);
-                    if (apiClaims != null)
-                    {
-
-                        apiResource.UserClaims = apiClaims.Select(x => x.Type).ToList();
-                    }
+                    var apiSecrets = new List<Secret>();
+                    secrets.ToList().ForEach(x => apiSecrets.Add(x.MapSecret()));
+                    apiResource.ApiSecrets = apiSecrets;
+                }
+                var scopes = await GetScopesByApiResourceId(api.Id);
+                if (scopes != null)
+                {
+                    var apiScopes = new List<Scope>();
+                    scopes.ToList().ForEach(x => apiScopes.Add(x.MapScope()));
+                    apiResource.Scopes = apiScopes;
+                }
+                var apiClaims = await GetClaimsByApiId(api.Id);
+                if (apiClaims != null)
+                {
+                    apiResource.UserClaims = apiClaims.Select(x => x.Type).ToList();
                 }
 
                 return apiResource;
+            }
+            else
+            {
+                return null;
             }
         }
 
         public async Task<Entities.ApiResources> GetByName(string name)
         {
-            using (var connection = new SqlConnection(_connectionString))
-            {
-
-                var api = connection.QueryFirstOrDefaultAsync<Entities.ApiResources>($"select * from {_options.DbSchema}.ApiResources where Name = @Name", new { Name = name }, commandType: CommandType.Text);
-                return await api;
-            }
+            await using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync();
+            var api = connection.QueryFirstOrDefaultAsync<Entities.ApiResources>($"select * from {_options.DbSchema}.ApiResources where Name = @Name", new { Name = name }, commandType: CommandType.Text);
+            return await api;
         }
 
         public async Task<IEnumerable<ApiResource>> FindApiResourcesAllAsync()
         {
-            using (var connection = new SqlConnection(_connectionString))
+            await using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync();
+            var result = await connection.QueryAsync<Entities.ApiResources>($"select * from {_options.DbSchema}.ApiResources", commandType: CommandType.Text);
+            if (result != null && result.Any())
             {
+                var apiResourceList = result.ToList();
+                var secrets = await connection.QueryAsync<Entities.ApiSecrets>($"select * from {_options.DbSchema}.ApiSecrets", commandType: CommandType.Text);
 
-                var result = await connection.QueryAsync<Entities.ApiResources>($"select * from {_options.DbSchema}.ApiResources", commandType: CommandType.Text);
-                if (result != null && result.Any())
+                var scopes = await connection.QueryAsync<Entities.ApiScopes>($"select * from {_options.DbSchema}.ApiScopes", commandType: CommandType.Text);
+
+                var scopeClaims = await connection.QueryAsync<Entities.ApiScopeClaims>($"select * from {_options.DbSchema}.ApiScopeClaims", commandType: CommandType.Text);
+
+
+                var apiClaims = await connection.QueryAsync<Entities.ApiClaims>($"select * from {_options.DbSchema}.ApiClaims", commandType: CommandType.Text);
+
+                connection.Close();
+
+                var apiResources = new List<ApiResource>();
+                apiResourceList.ForEach(x => apiResources.Add(x.MapApiResource()));
+
+
+                if (scopes != null && scopes.Any())
                 {
-                    var apiResourceList = result.ToList();
-                    var secrets = await connection.QueryAsync<Entities.ApiSecrets>($"select * from {_options.DbSchema}.ApiSecrets", commandType: CommandType.Text);
-
-                    var scopes = await connection.QueryAsync<Entities.ApiScopes>($"select * from {_options.DbSchema}.ApiScopes", commandType: CommandType.Text);
-
-                    var scopeClaims = await connection.QueryAsync<Entities.ApiScopeClaims>($"select * from {_options.DbSchema}.ApiScopeClaims", commandType: CommandType.Text);
-
-
-                    var apiClaims = await connection.QueryAsync<Entities.ApiClaims>($"select * from {_options.DbSchema}.ApiClaims", commandType: CommandType.Text);
-
-                    connection.Close();
-
-                    var apiResources = _mapper.Map<List<ApiResource>>(apiResourceList);
-
-
-                    if (scopes != null && scopes.Any())
-                    {
-                        foreach (var resource in apiResourceList)
-                        {
-                            var resourceScopes = scopes.Where(x => x.ApiResourceId == resource.Id).ToList();
-                            var scopeList = _mapper.Map<List<Scope>>(resourceScopes);
-                            apiResources.Single(x => x.Name == resource.Name).Scopes = scopeList;
-
-                            foreach (var scope in resourceScopes)
-                            {
-                                var scopeClaimList = _mapper.Map<List<string>>(scopeClaims.Where(x => x.ApiScopeId == scope.Id).Select(x => x.Type).ToList());
-                                var userClaims = apiResources.Single(x => x.Name == resource.Name).UserClaims.Union(scopeClaimList).ToHashSet();
-                                apiResources.Single(x => x.Name == resource.Name).UserClaims = userClaims;
-
-                            }
-                        }
-                    }
-
                     foreach (var resource in apiResourceList)
                     {
-                        var secretList = _mapper.Map<List<Secret>>(secrets.Where(x => x.ApiResourceId == resource.Id).ToList());
-                        apiResources.Single(x => x.Name == resource.Name).ApiSecrets = secretList;
+                        var resourceScopes = scopes.Where(x => x.ApiResourceId == resource.Id).ToList();
+                        var scopeList = new List<Scope>();
+                        resourceScopes.ForEach(x => scopeList.Add(x.MapScope()));
 
-                        var userClaimList = _mapper.Map<List<string>>(apiClaims.Where(x => x.ApiResourceId == resource.Id).Select(x => x.Type).ToList());
-                        var userClaims = apiResources.Single(x => x.Name == resource.Name).UserClaims.Union(userClaimList).ToHashSet();
-                        apiResources.Single(x => x.Name == resource.Name).UserClaims = userClaims;
+                        apiResources.Single(x => x.Name == resource.Name).Scopes = scopeList;
 
+                        foreach (var scope in resourceScopes)
+                        {
+                            var scopeClaimList = scopeClaims.Where(x => x.ApiScopeId == scope.Id).Select(x => x.Type).ToList();
+                            var userClaims = apiResources.Single(x => x.Name == resource.Name).UserClaims.Union(scopeClaimList).ToHashSet();
+                            apiResources.Single(x => x.Name == resource.Name).UserClaims = userClaims;
 
+                        }
                     }
-
-                    return apiResources;
                 }
-                else
+
+                foreach (var resource in apiResourceList)
                 {
-                    return null;
+                    var secretList = new List<Secret>();
+                    (secrets.Where(x => x.ApiResourceId == resource.Id).ToList()).ForEach(x => secretList.Add(x.MapSecret()));
+                    apiResources.Single(x => x.Name == resource.Name).ApiSecrets = secretList;
+
+                    var userClaimList = (apiClaims.Where(x => x.ApiResourceId == resource.Id).Select(x => x.Type).ToList());
+                    var userClaims = apiResources.Single(x => x.Name == resource.Name).UserClaims.Union(userClaimList).ToHashSet();
+                    apiResources.Single(x => x.Name == resource.Name).UserClaims = userClaims;
+
+
                 }
 
+                return apiResources;
             }
-
+            else
+            {
+                return null;
+            }
         }
 
 
@@ -146,54 +148,49 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             var dbApiResource = await FindApiResourceAsync(apiResource.Name);
             if (dbApiResource != null)
             {
+                var resourceName = apiResource.Name;
+                logger.LogError("Could not add ApiResource - Reason: Name={resourceName} already exists.", resourceName);
                 throw new InvalidOperationException($"ApiResource with Name={apiResource.Name} already exists.");
             }
 
-            var entity = _mapper.Map<ApiResources>(apiResource);
-            using (var con = new SqlConnection(_connectionString))
+            var entity = apiResource.MapApiResources();
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            await using var t = await con.BeginTransactionAsync();
+            //added  Created , Updated, LastAccessed, NonEditable
+            var apiId = await con.ExecuteScalarAsync<int>($"insert into {_options.DbSchema}.ApiResources ([Description],DisplayName,Enabled,[Name], Created , Updated, LastAccessed, NonEditable) values (@Description,@DisplayName,@Enabled,@Name, @Created , @Updated, @LastAccessed, @NonEditable);{_options.GetLastInsertID}", new
             {
+                entity.Description,
+                entity.DisplayName,
+                entity.Enabled,
+                entity.Name,
+                entity.Created,
+                entity.Updated,
+                entity.LastAccessed,
+                entity.NonEditable
 
-                con.Open();
-                using (var t = con.BeginTransaction())
+            }, commandType: CommandType.Text, transaction: t);
+            entity.Id = apiId;
+
+            if (apiResource.UserClaims != null && apiResource.UserClaims.Any())
+            {
+                foreach (var item in apiResource.UserClaims)
                 {
-
-                    //added  Created , Updated, LastAccessed, NonEditable
-                    var apiId = await con.ExecuteScalarAsync<int>($"insert into {_options.DbSchema}.ApiResources ([Description],DisplayName,Enabled,[Name], Created , Updated, LastAccessed, NonEditable) values (@Description,@DisplayName,@Enabled,@Name, @Created , @Updated, @LastAccessed, @NonEditable);{_options.GetLastInsertID}", new
-                    {
-                        entity.Description,
-                        entity.DisplayName,
-                        entity.Enabled,
-                        entity.Name,
-                        entity.Created,
-                        entity.Updated,
-                        entity.LastAccessed,
-                        entity.NonEditable
-
-                    }, commandType: CommandType.Text, transaction: t);
-                    entity.Id = apiId;
-
-                    if (apiResource.UserClaims != null && apiResource.UserClaims.Any())
-                    {
-                        foreach (var item in apiResource.UserClaims)
-                        {
-                            await InsertApiResourceClaim(item, entity.Id, con, t);
-                        }
-                    }
-                    if (apiResource.ApiSecrets != null && apiResource.ApiSecrets.Any())
-                    {
-                        foreach (var item in apiResource.ApiSecrets)
-                        {
-                            await InsertApiSecretsByApiResourceId(item, apiId, con, t);
-                        }
-                    }
-                    if (apiResource.Scopes != null && apiResource.Scopes.Any())
-                    {
-                        await InsertApiScopeByApiResourceId(apiResource.Scopes, entity.Id, con, t);
-                    }
-                    t.Commit();
-
+                    await InsertApiResourceClaim(item, entity.Id, con, t);
                 }
             }
+            if (apiResource.ApiSecrets != null && apiResource.ApiSecrets.Any())
+            {
+                foreach (var item in apiResource.ApiSecrets)
+                {
+                    await InsertApiSecretsByApiResourceId(item, apiId, con, t);
+                }
+            }
+            if (apiResource.Scopes != null && apiResource.Scopes.Any())
+            {
+                await InsertApiScopeByApiResourceId(apiResource.Scopes, entity.Id, con, t);
+            }
+            t.Commit();
         }
 
         public async Task RemoveAsync(string name)
@@ -203,37 +200,36 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             {
                 return;
             }
-            using (var con = new SqlConnection(_connectionString))
-            {
 
-                con.Open();
-                var t = con.BeginTransaction();
-                try
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            await using var t = await con.BeginTransactionAsync();
+            try
+            {
+                var ret = await con.ExecuteAsync($"delete from {_options.DbSchema}.ApiResources where Id=@Id;", new
                 {
-                    var ret = await con.ExecuteAsync($"delete from {_options.DbSchema}.ApiResources where Id=@Id;", new
-                    {
-                        entity.Id
-                    }, commandType: CommandType.Text, transaction: t);
-                    if (ret != 1)
-                    {
-                        throw new Exception($"Error executing delete from ApiResources, return values is {ret}");
-                    }
-                    await RemoveApiScopeByApiResourceId(entity.Id, con, t);
-                    await con.ExecuteAsync($"delete from {_options.DbSchema}.ApiClaims where ApiResourceId=@ApiResourceId;delete from ApiSecrets where ApiResourceId=@ApiResourceId;", new
-                    {
-                        ApiResourceId = entity.Id
-                    }, commandType: CommandType.Text, transaction: t);
-                    t.Commit();
-                }
-                catch (Exception ex)
+                    entity.Id
+                }, commandType: CommandType.Text, transaction: t);
+                if (ret != 1)
                 {
-                    t.Rollback();
-                    throw ex;
+                    logger.LogError($"Could not execute delete from ApiResources, return values is {ret}." + " Tried removing name = {name}", name);
+                    throw new Exception($"Error executing delete from ApiResources, return values is {ret}");
                 }
-                finally
+                await RemoveApiScopeByApiResourceId(entity.Id, con, t);
+                await con.ExecuteAsync($"delete from {_options.DbSchema}.ApiClaims where ApiResourceId=@ApiResourceId;delete from ApiSecrets where ApiResourceId=@ApiResourceId;", new
                 {
-                    con.Close();
-                }
+                    ApiResourceId = entity.Id
+                }, commandType: CommandType.Text, transaction: t);
+                t.Commit();
+            }
+            catch (Exception ex)
+            {
+                t.Rollback();
+                throw ex;
+            }
+            finally
+            {
+                con.Close();
             }
         }
 
@@ -246,43 +242,36 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                 throw new InvalidOperationException($"Can not find ApiResource for Name={apiResource.Name}.");
             }
 
-            var updateEntity = _mapper.Map<ApiResources>(apiResource);
+            var updateEntity = apiResource.MapApiResources();
 
             updateEntity.Id = dbItem.Id;
-            using (var con = new SqlConnection(_connectionString))
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            await using var t = await con.BeginTransactionAsync();
+            try
             {
+                var ret = await con.ExecuteAsync($"update {_options.DbSchema}.ApiResources set [Description] = @Description," +
+                                                 $"DisplayName=@DisplayName," +
+                                                 $"Enabled=@Enabled," +
+                                                 $"[Name]=@Name where Id=@Id;", updateEntity, commandType: CommandType.Text, transaction: t);
 
-                con.Open();
-                using (var t = con.BeginTransaction())
-                {
-                    try
-                    {
-                        var ret = await con.ExecuteAsync($"update {_options.DbSchema}.ApiResources set [Description] = @Description," +
-                            $"DisplayName=@DisplayName," +
-                            $"Enabled=@Enabled," +
-                            $"[Name]=@Name where Id=@Id;", updateEntity, commandType: CommandType.Text, transaction: t);
-
-                        await UpdateScopesByApiResourceId(apiResource.Scopes, updateEntity.Id, con, t);
-                        await UpdateApiSecretsByApiResourceId(apiResource.ApiSecrets, updateEntity.Id, con, t);
-                        await UpdateClaimsByApiResourceId(apiResource.UserClaims, updateEntity.Id, con, t);
-                        t.Commit();
-                    }
-                    catch (Exception ex)
-                    {
-                        t.Rollback();
-                        throw ex;
-                    }
-                }
+                await UpdateScopesByApiResourceId(apiResource.Scopes, updateEntity.Id, con, t);
+                await UpdateApiSecretsByApiResourceId(apiResource.ApiSecrets, updateEntity.Id, con, t);
+                await UpdateClaimsByApiResourceId(apiResource.UserClaims, updateEntity.Id, con, t);
+                t.Commit();
+            }
+            catch (Exception ex)
+            {
+                t.Rollback();
+                throw ex;
             }
         }
 
         public async Task<IEnumerable<Entities.ApiScopes>> GetScopesByApiResourceId(int apiResourceId)
         {
-            using (var con = new SqlConnection(_connectionString))
-            {
-
-                return await GetScopesByApiResourceId(apiResourceId, con, null);
-            }
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            return await GetScopesByApiResourceId(apiResourceId, con, null);
         }
 
         public async Task<IEnumerable<Entities.ApiScopes>> GetScopesByApiResourceId(int apiResourceId, IDbConnection con, IDbTransaction t)
@@ -308,25 +297,24 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             var dbItem = await GetByName(apiResource.Name);
             if (dbItem == null)
             {
-                throw new InvalidOperationException($"Could not update ApiResource {apiResource.Name} not existed");
+                var resourceName = apiResource.Name;
+                logger.LogError("Could not update ApiResource - Reason: Name={resourceName} not found.", resourceName);
+                throw new InvalidOperationException($"Could not update ApiResource {apiResource.Name} - reason: not found");
             }
 
-            using (var con = new SqlConnection(_connectionString))
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            await using var t = await con.BeginTransactionAsync();
+
+            try
             {
-
-                con.Open();
-                var t = con.BeginTransaction();
-
-                try
-                {
-                    await UpdateScopesByApiResourceId(apiResource.Scopes, dbItem.Id, con, t);
-                    t.Commit();
-                }
-                catch (Exception ex)
-                {
-                    t.Rollback();
-                    throw ex;
-                }
+                await UpdateScopesByApiResourceId(apiResource.Scopes, dbItem.Id, con, t);
+                t.Commit();
+            }
+            catch (Exception ex)
+            {
+                t.Rollback();
+                throw ex;
             }
         }
         private async Task InsertApiScopeByApiResourceId(IEnumerable<Scope> apiScopes, int apiResourceId, IDbConnection con, IDbTransaction t)
@@ -412,7 +400,7 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                 foreach (var dbItem in itemsToUpdate)
                 {
                     var newItem = updatedItems.SingleOrDefault(c => c.Name == dbItem.Name);
-                    var updateItem = _mapper.Map<ApiScopes>(newItem);
+                    var updateItem = newItem.MapApiScopes();
                     updateItem.Id = dbItem.Id;
                     //update detail
                     con.Execute(
@@ -426,11 +414,9 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
 
         public async Task<IEnumerable<Entities.ApiClaims>> GetClaimsByApiId(int apiResourceId)
         {
-            using (var con = new SqlConnection(_connectionString))
-            {
-
-                return await GetClaimsByApiId(apiResourceId, con, null);
-            }
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            return await GetClaimsByApiId(apiResourceId, con, null);
         }
 
         public async Task<IEnumerable<Entities.ApiClaims>> GetClaimsByApiId(int apiResourceId, IDbConnection con, IDbTransaction t)
@@ -447,6 +433,8 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             }, commandType: CommandType.Text, transaction: t);
             if (ret != 1)
             {
+               
+                logger.LogError("Error executing insert in ApiClaims for apiResourceId {apiResourceId} and type {item}.", apiResourceId, item);
                 throw new Exception($"Error executing insert in ApiClaims, return values is {ret}");
             }
         }
@@ -481,35 +469,32 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             var dbItem = await GetByName(apiResource.Name);
             if (dbItem == null)
             {
+                logger.LogError("Could not find ApiResource with name {apiResourceName}.", apiResource.Name);
                 throw new InvalidOperationException($"Could not find ApiResource {apiResource.Name}");
             }
 
 
-            using (var con = new SqlConnection(_connectionString))
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            await using var t = await con.BeginTransactionAsync();
+
+            try
             {
-
-                con.Open();
-                var t = con.BeginTransaction();
-
-                try
-                {
-                    await UpdateClaimsByApiResourceId(apiResource.UserClaims, dbItem.Id, con, t);
-                    t.Commit();
-                }
-                catch (Exception ex)
-                {
-                    t.Rollback();
-                    throw ex;
-                }
+                await UpdateClaimsByApiResourceId(apiResource.UserClaims, dbItem.Id, con, t);
+                t.Commit();
+            }
+            catch (Exception ex)
+            {
+                t.Rollback();
+                throw ex;
             }
         }
 
         public async Task<IEnumerable<Entities.ApiSecrets>> GetSecretByApiResourceId(int apiResourceId)
         {
-            using (var con = new SqlConnection(_connectionString))
-            {
-                return await GetSecretByApiResourceId(apiResourceId, con, null);
-            }
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            return await GetSecretByApiResourceId(apiResourceId, con, null);
         }
 
         private async Task<IEnumerable<Entities.ApiSecrets>> GetSecretByApiResourceId(int apiResourceId, IDbConnection con, IDbTransaction t)
@@ -529,10 +514,11 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                     item.Expiration,
                     item.Type,
                     item.Value,
-                    Created = DateTime.Now
+                    Created = DateTime.UtcNow
                 }, commandType: CommandType.Text, transaction: t);
             if (ret != 1)
             {
+                logger.LogError("Error executing insert in ApiSecrets for apiResourceId {apiResourceId}.", apiResourceId);
                 throw new Exception($"Error executing insert in ApiSecrets, return values is {ret}");
             }
         }
@@ -586,14 +572,13 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             var dbItem = await GetByName(apiResource.Name);
             if (dbItem == null)
             {
+                logger.LogError("Could not update ApiSecrets for apiResource: {apiResourceName}.", apiResource.Name);
                 throw new InvalidOperationException($"Could not update ApiSecrets for apiResource: {apiResource.Name}.");
             }
 
-            using (var con = new SqlConnection(_connectionString))
-            {
-
-                await UpdateApiSecretsByApiResourceId(apiResource.ApiSecrets, dbItem.Id, null, null);
-            }
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            await UpdateApiSecretsByApiResourceId(apiResource.ApiSecrets, dbItem.Id, null, null);
         }
     }
 }

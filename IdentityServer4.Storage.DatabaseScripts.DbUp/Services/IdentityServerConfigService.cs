@@ -1,11 +1,10 @@
-﻿using IdentityServer4.Dapper.Storage.DataLayer;
-using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Linq;
-using System.Text;
+using IdentityServer4.Dapper.Storage.DataLayer;
+using IdentityServer4.Storage.DatabaseScripts.DbUp.Interfaces;
+using IdentityServer4.Storage.DatabaseScripts.DbUp.Seeding;
 
-namespace IdentityServer4.Storage.DatabaseScripts.DbUp
+namespace IdentityServer4.Storage.DatabaseScripts.DbUp.Services
 {
     public class IdentityServerConfigService : IIdentityServerConfigService
     {

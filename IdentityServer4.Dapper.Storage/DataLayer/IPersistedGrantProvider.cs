@@ -18,8 +18,8 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
         Task Remove(string key);
 
 
-        Task<int> QueryExpired(DateTime dateTime);
-        Task RemoveRange(DateTime dateTime);
+        Task<int> QueryExpired(DateTimeOffset dateTime);
+        Task RemoveRange(DateTimeOffset dateTime);
 
     }
 }

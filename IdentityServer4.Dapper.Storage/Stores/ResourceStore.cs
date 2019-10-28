@@ -45,7 +45,7 @@ namespace IdentityServer4.Dapper.Storage.Stores
 
         public async Task<Resources> GetAllResourcesAsync()
         {
-            Resources result = null;
+            Resources result;
             if (_configuration["ShowAllResources"] == "true")
             {
                 var apis = await _apiResource.FindApiResourcesAllAsync();

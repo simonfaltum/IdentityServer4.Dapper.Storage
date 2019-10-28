@@ -1,9 +1,10 @@
-﻿using AutoMapper;
+﻿
 using System.Collections.Generic;
 using System.Security.Claims;
 
 namespace IdentityServer4.Dapper.Storage.Options
 {
+    /*
     public class IdServerDapperMapperProfile : Profile
     {
         /// <summary>
@@ -36,6 +37,7 @@ namespace IdentityServer4.Dapper.Storage.Options
 
             CreateMap<Entities.ClientProperties, KeyValuePair<string, string>>()
             .ReverseMap();
+
 
             CreateMap<Entities.Clients, Models.Client>()
                 .ForMember(dest => dest.ProtocolType, opt => opt.Condition(srs => srs != null))
@@ -75,6 +77,12 @@ namespace IdentityServer4.Dapper.Storage.Options
                 .ReverseMap()
                 .ForMember(dest => dest.GrantType, opt => opt.MapFrom(src => src));
 
+            CreateMap<Entities.IdentityClaims, string>()
+    .ConstructUsing(x => x.Type)
+    .ReverseMap()
+    .ForMember(dest => dest.Type, opt => opt.MapFrom(src => src));
+
+
             CreateMap<Entities.ClientSecrets, Models.Secret>(MemberList.Destination)
                 .ForMember(dest => dest.Type, opt => opt.Condition(srs => srs != null))
                 .ReverseMap();
@@ -84,16 +92,12 @@ namespace IdentityServer4.Dapper.Storage.Options
                 .ConstructUsing(src => new Models.IdentityResource())
                 .ReverseMap();
 
-            CreateMap<Entities.IdentityClaims, string>()
-                .ConstructUsing(x => x.Type)
-                .ReverseMap()
-                .ForMember(dest => dest.Type, opt => opt.MapFrom(src => src));
 
 
             CreateMap<Entities.PersistedGrants, Models.PersistedGrant>(MemberList.Destination)
                 .ReverseMap();
 
 
-        }
+        }}
+        */
     }
-}

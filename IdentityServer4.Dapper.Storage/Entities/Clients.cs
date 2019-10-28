@@ -41,7 +41,7 @@ namespace IdentityServer4.Dapper.Storage.Entities
         public bool AlwaysSendClientClaims { get; set; }
         public string ClientClaimsPrefix { get; set; }
         public string PairWiseSubjectSalt { get; set; }
-        public DateTime Created { get; set; } = DateTime.Now;
+        public DateTime Created { get; set; } = DateTime.UtcNow;
         public DateTime? Updated { get; set; }
         public DateTime? LastAccessed { get; set; }
         public int? UserSsoLifetime { get; set; }

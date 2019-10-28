@@ -1,4 +1,4 @@
-﻿namespace IdentityServer4.Storage.DatabaseScripts.DbUp
+﻿namespace IdentityServer4.Storage.DatabaseScripts.DbUp.Options
 {
     public class DBProviderOptions
     {

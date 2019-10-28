@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using IdentityServer4.Models;
 
-namespace IdentityServer4.Storage.DatabaseScripts.DbUp
+namespace IdentityServer4.Storage.DatabaseScripts.DbUp.Seeding
 {
     public static class IdentityServerConfig
     {

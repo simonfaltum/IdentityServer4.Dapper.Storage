@@ -9,7 +9,7 @@ namespace IdentityServer4.Dapper.Storage.Entities
         public string Value { get; set; }
         public DateTime? Expiration { get; set; }
         public string Type { get; set; }
-        public DateTime Created { get; set; } = DateTime.Now;
+        public DateTime Created { get; set; } = DateTime.UtcNow;
         public int ClientId { get; set; }
 
 

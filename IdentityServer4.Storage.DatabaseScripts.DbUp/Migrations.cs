@@ -2,8 +2,9 @@
 using DbUp.Helpers;
 using System;
 using System.Collections.Generic;
-using System.Data.SqlClient;
 using System.Reflection;
+using IdentityServer4.Storage.DatabaseScripts.DbUp.Interfaces;
+using IdentityServer4.Storage.DatabaseScripts.DbUp.Options;
 
 namespace IdentityServer4.Storage.DatabaseScripts.DbUp
 {

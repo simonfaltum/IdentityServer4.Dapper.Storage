@@ -14,7 +14,7 @@ namespace IdentityServer4.Dapper.Storage.Entities
         public bool Required { get; set; }
         public bool Emphasize { get; set; }
         public bool ShowInDiscoveryDocument { get; set; }
-        public DateTime Created { get; set; } = DateTime.Now;
+        public DateTime Created { get; set; } = DateTime.UtcNow;
         public DateTime? Updated { get; set; }
         public bool NonEditable { get; set; }
 

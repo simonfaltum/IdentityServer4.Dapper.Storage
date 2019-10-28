@@ -43,11 +43,12 @@ namespace IdentityServer4.Dapper.Storage.Services
 
         public void Stop()
         {
-            if (_source == null) throw new InvalidOperationException("Not started. Call Start first.");
+            //if (_source == null) throw new InvalidOperationException("Not started. Call Start first.");
 
-
+            if(_source != null) { 
             _source.Cancel();
             _source = null;
+            }
         }
 
         private async Task StartInternal(CancellationToken cancellationToken)
@@ -93,30 +94,28 @@ namespace IdentityServer4.Dapper.Storage.Services
 
                 var found = _options.TokenCleanupBatchSize;
 
-                using (var serviceScope = _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope())
+                using var serviceScope = _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
+                var store = serviceScope.ServiceProvider.GetService<IPersistedGrantProvider>();
+                var timestamp = DateTimeOffset.UtcNow;
+                do
                 {
-                    var store = serviceScope.ServiceProvider.GetService<IPersistedGrantProvider>();
-                    var timestamp = DateTime.UtcNow;
-                    do
-                    {
-                        found = await store.QueryExpired(timestamp);
-                        Debug.WriteLine($"Clearing {found} tokens");
+                    found = await store.QueryExpired(timestamp);
+                    Debug.WriteLine($"Clearing {found} tokens");
 
-                        if (found > 0)
+                    if (found > 0)
+                    {
+                        try
                         {
-                            try
-                            {
-                                await store.RemoveRange(timestamp);
-                            }
-                            catch (Exception ex)
-                            {
-                                Debug.WriteLine("Concurrency exception clearing tokens: {exception}", ex.Message);
-                                throw ex; //throw out to stop while loop
-                            }
+                            await store.RemoveRange(timestamp);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine("Concurrency exception clearing tokens: {exception}", ex.Message);
+                            throw ex; //throw out to stop while loop
                         }
                     }
-                    while (found > 0);
                 }
+                while (found > 0);
             }
             catch (Exception ex)
             {

@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+﻿
 using Dapper;
 using IdentityServer4.Dapper.Storage.Entities;
 using IdentityServer4.Dapper.Storage.Options;
@@ -20,13 +20,11 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
     {
 
         private readonly DBProviderOptions _options;
-        private readonly IMapper _mapper;
         private readonly string _connectionString;
         public DefaultClientProvider(DBProviderOptions dBProviderOptions, ILogger<DefaultClientProvider> logger)
         {
             _options = dBProviderOptions ?? throw new ArgumentNullException(nameof(dBProviderOptions));
-            _mapper = new MapperConfiguration(cfg => cfg.AddProfile<IdServerDapperMapperProfile>())
-                .CreateMapper();
+        
             _connectionString = dBProviderOptions.ConnectionString;
         }
 
@@ -44,69 +42,70 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                 return null;
             }
 
-            var client = _mapper.Map<Client>(clientDto);
+            var client = clientDto.MapClient();
 
-            using (var connection = new SqlConnection(_connectionString))
+            await using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync();
+            var grantTypes = await GetClientGrantTypeByClientId(clientDto.Id);
+            var redirectUrls = await GetClientRedirectUriByClientId(clientDto.Id);
+            var postLogoutRedirectUris = await GetClientPostLogoutRedirectUriByClientID(clientDto.Id);
+            var allowedScopes = await GetClientScopeByClientId(clientDto.Id);
+            var secrets = await GetClientSecretByClientId(clientDto.Id);
+            var claims = await GetClientClaimByClientId(clientDto.Id);
+            var idPRestrictions = await GetClientIdPRestrictionByClientId(clientDto.Id);
+            var corsOrigins = await GetClientCorsOriginByClientId(clientDto.Id);
+            var properties = await GetClientPropertyByClientId(clientDto.Id);
+
+            if (grantTypes != null)
             {
-                var grantTypes = await GetClientGrantTypeByClientId(clientDto.Id);
-                var redirectUrls = await GetClientRedirectUriByClientId(clientDto.Id);
-                var postLogoutRedirectUris = await GetClientPostLogoutRedirectUriByClientID(clientDto.Id);
-                var allowedScopes = await GetClientScopeByClientId(clientDto.Id);
-                var secrets = await GetClientSecretByClientId(clientDto.Id);
-                var claims = await GetClientClaimByClientId(clientDto.Id);
-                var idPRestrictions = await GetClientIdPRestrictionByClientId(clientDto.Id);
-                var corsOrigins = await GetClientCorsOriginByClientId(clientDto.Id);
-                var properties = await GetClientPropertyByClientId(clientDto.Id);
-
-                if (grantTypes != null)
-                {
-                    client.AllowedGrantTypes = grantTypes.Select(x => x.GrantType).ToList();
-                }
-
-                if (redirectUrls != null)
-                {
-                    client.RedirectUris = redirectUrls.Select(x => x.RedirectUri).ToList();
-                }
-
-                if (postLogoutRedirectUris != null)
-                {
-                    client.PostLogoutRedirectUris =
-                        postLogoutRedirectUris.Select(x => x.PostLogoutRedirectUri).ToList();
-                }
-
-                if (allowedScopes != null)
-                {
-                    client.AllowedScopes = allowedScopes.Select(x => x.Scope).ToList();
-                }
-
-                if (secrets != null)
-                {
-                    client.ClientSecrets = _mapper.Map<List<Secret>>(secrets);
-                }
-
-                if (claims != null)
-                {
-                    client.Claims = _mapper.Map<List<Claim>>(claims);
-                }
-
-                if (idPRestrictions != null)
-                {
-                    client.IdentityProviderRestrictions = idPRestrictions.Select(x => x.Provider).ToList();
-                }
-
-                if (corsOrigins != null)
-                {
-                    client.AllowedCorsOrigins = corsOrigins.Select(x => x.Origin).ToList();
-                }
-
-                if (properties != null)
-                {
-                    client.Properties = properties.ToDictionary(x => x.Key, y => y.Value);
-                }
-
-
-                return client;
+                client.AllowedGrantTypes = grantTypes.Select(x => x.GrantType).ToList();
             }
+
+            if (redirectUrls != null)
+            {
+                client.RedirectUris = redirectUrls.Select(x => x.RedirectUri).ToList();
+            }
+
+            if (postLogoutRedirectUris != null)
+            {
+                client.PostLogoutRedirectUris =
+                    postLogoutRedirectUris.Select(x => x.PostLogoutRedirectUri).ToList();
+            }
+
+            if (allowedScopes != null)
+            {
+                client.AllowedScopes = allowedScopes.Select(x => x.Scope).ToList();
+            }
+
+            if (secrets != null)
+            {
+                client.ClientSecrets = new List<Secret>();
+                secrets.ToList().ForEach(x => client.ClientSecrets.Add(x.MapSecret()));
+            }
+
+            if (claims != null)
+            {
+                client.Claims = new List<Claim>();
+                claims.ToList().ForEach(x => client.Claims.Add(x.MapClaim()));
+            }
+
+            if (idPRestrictions != null)
+            {
+                client.IdentityProviderRestrictions = idPRestrictions.Select(x => x.Provider).ToList();
+            }
+
+            if (corsOrigins != null)
+            {
+                client.AllowedCorsOrigins = corsOrigins.Select(x => x.Origin).ToList();
+            }
+
+            if (properties != null)
+            {
+                client.Properties = properties.ToDictionary(x => x.Key, y => y.Value);
+            }
+
+
+            return client;
         }
 
         public async Task<Clients> GetClientById(string clientId)
@@ -116,13 +115,9 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                 return null;
             }
 
-            using (var connection = new SqlConnection(_connectionString))
-            {
-
-
-                return await connection.QueryFirstOrDefaultAsync<Clients>($"select * from {_options.DbSchema}.Clients where ClientId = @ClientId", new { ClientId = clientId });
-
-            }
+            await using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync();
+            return await connection.QueryFirstOrDefaultAsync<Clients>($"select * from {_options.DbSchema}.Clients where ClientId = @ClientId", new { ClientId = clientId });
         }
 
         /// <summary>
@@ -137,192 +132,184 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             {
                 throw new InvalidOperationException($"Client with clientId={client.ClientId} already exist.");
             }
-            var clientDto = _mapper.Map<Clients>(client);
+            var clientDto = client.MapClients();
 
-            using (var con = new SqlConnection(_connectionString))
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            await using var transaction = await con.BeginTransactionAsync();
+            try
             {
 
-                con.Open();
-                using (var transaction = con.BeginTransaction())
+                var ClientId = await con.ExecuteScalarAsync<int>(
+                    $"insert into {_options.DbSchema}.Clients ([AbsoluteRefreshTokenLifetime],[AccessTokenLifetime],[AccessTokenType],[AllowAccessTokensViaBrowser],[AllowOfflineAccess],[AllowPlainTextPkce],[" +
+                    $"AllowRememberConsent],[AlwaysIncludeUserClaimsInIdToken],[AlwaysSendClientClaims],[" +
+                    $"AuthorizationCodeLifetime],[BackChannelLogoutSessionRequired],[BackChannelLogoutUri],[ClientClaimsPrefix],[ClientId],[ClientName],[ClientUri],[" +
+                    $"ConsentLifetime],[Description],[EnableLocalLogin],[Enabled],[FrontChannelLogoutSessionRequired],[FrontChannelLogoutUri],[IdentityTokenLifetime],[IncludeJwtId],[" +
+                    $"LogoUri],[PairWiseSubjectSalt],[ProtocolType],[RefreshTokenExpiration],[RefreshTokenUsage],[RequireClientSecret],[RequireConsent],[RequirePkce],[SlidingRefreshTokenLifetime],[" +
+                    $"UpdateAccessTokenClaimsOnRefresh],[Created],[Updated],[LastAccessed],[UserSsoLifetime],[UserCodeType],[DeviceCodeLifetime],[NonEditable]) " +
+                    $"values (@AbsoluteRefreshTokenLifetime,@AccessTokenLifetime,@AccessTokenType,@AllowAccessTokensViaBrowser,@AllowOfflineAccess,@AllowPlainTextPkce,@AllowRememberConsent," +
+                    $"@AlwaysIncludeUserClaimsInIdToken,@AlwaysSendClientClaims,@AuthorizationCodeLifetime,@BackChannelLogoutSessionRequired,@BackChannelLogoutUri,@ClientClaimsPrefix,@ClientId," +
+                    $"@ClientName,@ClientUri,@ConsentLifetime,@Description,@EnableLocalLogin,@Enabled,@FrontChannelLogoutSessionRequired,@FrontChannelLogoutUri,@IdentityTokenLifetime,@IncludeJwtId," +
+                    $"@LogoUri,@PairWiseSubjectSalt,@ProtocolType,@RefreshTokenExpiration,@RefreshTokenUsage,@RequireClientSecret,@RequireConsent,@RequirePkce,@SlidingRefreshTokenLifetime," +
+                    $"@UpdateAccessTokenClaimsOnRefresh,@Created,@Updated,@LastAccessed,@UserSsoLifetime,@UserCodeType,@DeviceCodeLifetime,@NonEditable);{_options.GetLastInsertID}",
+                    clientDto, transaction: transaction);
+                var result = 0;
+                if (client.AllowedGrantTypes != null)
                 {
-                    try
+                    foreach (var item in client.AllowedGrantTypes)
                     {
-
-                        var ClientId = await con.ExecuteScalarAsync<int>(
-                            $"insert into {_options.DbSchema}.Clients ([AbsoluteRefreshTokenLifetime],[AccessTokenLifetime],[AccessTokenType],[AllowAccessTokensViaBrowser],[AllowOfflineAccess],[AllowPlainTextPkce],[" +
-                            $"AllowRememberConsent],[AlwaysIncludeUserClaimsInIdToken],[AlwaysSendClientClaims],[" +
-                            $"AuthorizationCodeLifetime],[BackChannelLogoutSessionRequired],[BackChannelLogoutUri],[ClientClaimsPrefix],[ClientId],[ClientName],[ClientUri],[" +
-                            $"ConsentLifetime],[Description],[EnableLocalLogin],[Enabled],[FrontChannelLogoutSessionRequired],[FrontChannelLogoutUri],[IdentityTokenLifetime],[IncludeJwtId],[" +
-                            $"LogoUri],[PairWiseSubjectSalt],[ProtocolType],[RefreshTokenExpiration],[RefreshTokenUsage],[RequireClientSecret],[RequireConsent],[RequirePkce],[SlidingRefreshTokenLifetime],[" +
-                            $"UpdateAccessTokenClaimsOnRefresh],[Created],[Updated],[LastAccessed],[UserSsoLifetime],[UserCodeType],[DeviceCodeLifetime],[NonEditable]) " +
-                            $"values (@AbsoluteRefreshTokenLifetime,@AccessTokenLifetime,@AccessTokenType,@AllowAccessTokensViaBrowser,@AllowOfflineAccess,@AllowPlainTextPkce,@AllowRememberConsent," +
-                            $"@AlwaysIncludeUserClaimsInIdToken,@AlwaysSendClientClaims,@AuthorizationCodeLifetime,@BackChannelLogoutSessionRequired,@BackChannelLogoutUri,@ClientClaimsPrefix,@ClientId," +
-                            $"@ClientName,@ClientUri,@ConsentLifetime,@Description,@EnableLocalLogin,@Enabled,@FrontChannelLogoutSessionRequired,@FrontChannelLogoutUri,@IdentityTokenLifetime,@IncludeJwtId," +
-                            $"@LogoUri,@PairWiseSubjectSalt,@ProtocolType,@RefreshTokenExpiration,@RefreshTokenUsage,@RequireClientSecret,@RequireConsent,@RequirePkce,@SlidingRefreshTokenLifetime," +
-                            $"@UpdateAccessTokenClaimsOnRefresh,@Created,@Updated,@LastAccessed,@UserSsoLifetime,@UserCodeType,@DeviceCodeLifetime,@NonEditable);{_options.GetLastInsertID}",
-                            clientDto, transaction: transaction);
-                        var result = 0;
-                        if (client.AllowedGrantTypes != null)
+                        result = await con.ExecuteAsync($"insert into {_options.DbSchema}.ClientGrantTypes (ClientId,GrantType) values (@ClientId,@GrantType)", new
                         {
-                            foreach (var item in client.AllowedGrantTypes)
-                            {
-                                result = await con.ExecuteAsync($"insert into {_options.DbSchema}.ClientGrantTypes (ClientId,GrantType) values (@ClientId,@GrantType)", new
-                                {
-                                    ClientId = ClientId,
-                                    GrantType = item
-                                }, transaction: transaction);
-                                if (result != 1)
-                                {
-                                    throw new Exception($"Error inserting into ClientGrantTypes, return value is {result}");
-                                }
-                            }
-                        }
-
-                        if (client.RedirectUris != null)
+                            ClientId = ClientId,
+                            GrantType = item
+                        }, transaction: transaction);
+                        if (result != 1)
                         {
-                            foreach (var item in client.RedirectUris)
-                            {
-                                result = await con.ExecuteAsync($"insert into {_options.DbSchema}.ClientRedirectUris (ClientId,RedirectUri) values (@ClientId,@RedirectUri)", new
-                                {
-                                    ClientId = ClientId,
-                                    RedirectUri = item
-                                }, transaction: transaction);
-                                if (result != 1)
-                                {
-                                    throw new Exception($"Error inserting into ClientRedirectUris, return value is {result}");
-                                }
-                            }
+                            throw new Exception($"Error inserting into ClientGrantTypes, return value is {result}");
                         }
-                        if (client.PostLogoutRedirectUris != null)
-                        {
-                            foreach (var item in client.PostLogoutRedirectUris)
-                            {
-                                result = await con.ExecuteAsync($"insert into {_options.DbSchema}.ClientPostLogoutRedirectUris (ClientId,PostLogoutRedirectUri) values (@ClientId,@PostLogoutRedirectUri)", new
-                                {
-                                    ClientId = ClientId,
-                                    PostLogoutRedirectUri = item
-                                }, transaction: transaction);
-                                if (result != 1)
-                                {
-                                    throw new Exception($"Error inserting into ClientPostLogoutRedirectUris, return value is {result}");
-                                }
-                            }
-                        }
-                        if (client.AllowedScopes != null)
-                        {
-                            foreach (var item in client.AllowedScopes)
-                            {
-                                result = await con.ExecuteAsync($"insert into {_options.DbSchema}.ClientScopes (ClientId,Scope) values (@ClientId,@Scope)", new
-                                {
-                                    ClientId = ClientId,
-                                    Scope = item
-                                }, transaction: transaction);
-                                if (result != 1)
-                                {
-                                    throw new Exception($"Error inserting into ClientScopes, return value is {result}");
-                                }
-                            }
-                        }
-                        if (client.ClientSecrets != null)
-                        {
-                            foreach (var item in client.ClientSecrets)
-                            {
-                                result = await con.ExecuteAsync($"insert into {_options.DbSchema}.ClientSecrets (ClientId,Description,Expiration,[Type],[Value], Created) values (@ClientId,@Description,@Expiration,@Type,@Value, @Created)", new
-                                {
-                                    ClientId = ClientId,
-                                    Description = item.Description,
-                                    Expiration = item.Expiration,
-                                    Type = item.Type,
-                                    Value = item.Value,
-                                    Created = clientDto.Created
-                                }, transaction: transaction);
-                                if (result != 1)
-                                {
-                                    throw new Exception($"Error inserting into ClientSecrets, return value is {result}");
-                                }
-                            }
-                        }
-                        if (client.Claims != null)
-                        {
-                            foreach (var item in client.Claims)
-                            {
-                                result = await con.ExecuteAsync($"insert into {_options.DbSchema}.ClientClaims ([ClientId],[Type],[Value]) values (@ClientId,@Type,@Value)", new
-                                {
-                                    ClientId = ClientId,
-                                    Type = item.Type,
-                                    Value = item.Value
-                                }, transaction: transaction);
-                                if (result != 1)
-                                {
-                                    throw new Exception($"Error inserting into ClientClaims, return value is {result}");
-                                }
-                            }
-                        }
-                        if (client.IdentityProviderRestrictions != null)
-                        {
-                            foreach (var item in client.IdentityProviderRestrictions)
-                            {
-                                result = await con.ExecuteAsync($"insert into {_options.DbSchema}.ClientIdPRestrictions (ClientId,Provider) values (@ClientId,@Provider)", new
-                                {
-                                    ClientId = ClientId,
-                                    Provider = item,
-                                }, transaction: transaction);
-                                if (result != 1)
-                                {
-                                    throw new Exception($"Error inserting into ClientIdPRestrictions, return value is {result}");
-                                }
-                            }
-                        }
-                        if (client.AllowedCorsOrigins != null)
-                        {
-                            foreach (var item in client.AllowedCorsOrigins)
-                            {
-                                result = await con.ExecuteAsync($"insert into {_options.DbSchema}.ClientCorsOrigins (ClientId,Origin) values (@ClientId,@Origin)", new
-                                {
-                                    ClientId = ClientId,
-                                    Origin = item,
-                                }, transaction: transaction);
-                                if (result != 1)
-                                {
-                                    throw new Exception($"Error inserting into ClientCorsOrigins, return value is {result}");
-                                }
-                            }
-                        }
-                        if (client.Properties != null)
-                        {
-                            foreach (var item in client.Properties)
-                            {
-                                result = await con.ExecuteAsync($"insert into {_options.DbSchema}.ClientProperties (ClientId,[Key],[Value]) values (@ClientId,@Key,@Value)", new
-                                {
-                                    ClientId,
-                                    item.Key,
-                                    item.Value
-                                }, transaction: transaction);
-                                if (result != 1)
-                                {
-                                    throw new Exception($"Error inserting into ClientProperties, return value is {result}");
-                                }
-                            }
-                        }
-                        transaction.Commit();
-                    }
-                    catch (Exception ex)
-                    {
-                        transaction.Rollback();
-                        throw ex;
                     }
                 }
+
+                if (client.RedirectUris != null)
+                {
+                    foreach (var item in client.RedirectUris)
+                    {
+                        result = await con.ExecuteAsync($"insert into {_options.DbSchema}.ClientRedirectUris (ClientId,RedirectUri) values (@ClientId,@RedirectUri)", new
+                        {
+                            ClientId = ClientId,
+                            RedirectUri = item
+                        }, transaction: transaction);
+                        if (result != 1)
+                        {
+                            throw new Exception($"Error inserting into ClientRedirectUris, return value is {result}");
+                        }
+                    }
+                }
+                if (client.PostLogoutRedirectUris != null)
+                {
+                    foreach (var item in client.PostLogoutRedirectUris)
+                    {
+                        result = await con.ExecuteAsync($"insert into {_options.DbSchema}.ClientPostLogoutRedirectUris (ClientId,PostLogoutRedirectUri) values (@ClientId,@PostLogoutRedirectUri)", new
+                        {
+                            ClientId = ClientId,
+                            PostLogoutRedirectUri = item
+                        }, transaction: transaction);
+                        if (result != 1)
+                        {
+                            throw new Exception($"Error inserting into ClientPostLogoutRedirectUris, return value is {result}");
+                        }
+                    }
+                }
+                if (client.AllowedScopes != null)
+                {
+                    foreach (var item in client.AllowedScopes)
+                    {
+                        result = await con.ExecuteAsync($"insert into {_options.DbSchema}.ClientScopes (ClientId,Scope) values (@ClientId,@Scope)", new
+                        {
+                            ClientId = ClientId,
+                            Scope = item
+                        }, transaction: transaction);
+                        if (result != 1)
+                        {
+                            throw new Exception($"Error inserting into ClientScopes, return value is {result}");
+                        }
+                    }
+                }
+                if (client.ClientSecrets != null)
+                {
+                    foreach (var item in client.ClientSecrets)
+                    {
+                        result = await con.ExecuteAsync($"insert into {_options.DbSchema}.ClientSecrets (ClientId,Description,Expiration,[Type],[Value], Created) values (@ClientId,@Description,@Expiration,@Type,@Value, @Created)", new
+                        {
+                            ClientId = ClientId,
+                            Description = item.Description,
+                            Expiration = item.Expiration,
+                            Type = item.Type,
+                            Value = item.Value,
+                            Created = clientDto.Created
+                        }, transaction: transaction);
+                        if (result != 1)
+                        {
+                            throw new Exception($"Error inserting into ClientSecrets, return value is {result}");
+                        }
+                    }
+                }
+                if (client.Claims != null)
+                {
+                    foreach (var item in client.Claims)
+                    {
+                        result = await con.ExecuteAsync($"insert into {_options.DbSchema}.ClientClaims ([ClientId],[Type],[Value]) values (@ClientId,@Type,@Value)", new
+                        {
+                            ClientId = ClientId,
+                            Type = item.Type,
+                            Value = item.Value
+                        }, transaction: transaction);
+                        if (result != 1)
+                        {
+                            throw new Exception($"Error inserting into ClientClaims, return value is {result}");
+                        }
+                    }
+                }
+                if (client.IdentityProviderRestrictions != null)
+                {
+                    foreach (var item in client.IdentityProviderRestrictions)
+                    {
+                        result = await con.ExecuteAsync($"insert into {_options.DbSchema}.ClientIdPRestrictions (ClientId,Provider) values (@ClientId,@Provider)", new
+                        {
+                            ClientId = ClientId,
+                            Provider = item,
+                        }, transaction: transaction);
+                        if (result != 1)
+                        {
+                            throw new Exception($"Error inserting into ClientIdPRestrictions, return value is {result}");
+                        }
+                    }
+                }
+                if (client.AllowedCorsOrigins != null)
+                {
+                    foreach (var item in client.AllowedCorsOrigins)
+                    {
+                        result = await con.ExecuteAsync($"insert into {_options.DbSchema}.ClientCorsOrigins (ClientId,Origin) values (@ClientId,@Origin)", new
+                        {
+                            ClientId = ClientId,
+                            Origin = item,
+                        }, transaction: transaction);
+                        if (result != 1)
+                        {
+                            throw new Exception($"Error inserting into ClientCorsOrigins, return value is {result}");
+                        }
+                    }
+                }
+                if (client.Properties != null)
+                {
+                    foreach (var item in client.Properties)
+                    {
+                        result = await con.ExecuteAsync($"insert into {_options.DbSchema}.ClientProperties (ClientId,[Key],[Value]) values (@ClientId,@Key,@Value)", new
+                        {
+                            ClientId,
+                            item.Key,
+                            item.Value
+                        }, transaction: transaction);
+                        if (result != 1)
+                        {
+                            throw new Exception($"Error inserting into ClientProperties, return value is {result}");
+                        }
+                    }
+                }
+                transaction.Commit();
+            }
+            catch (Exception ex)
+            {
+                transaction.Rollback();
+                throw ex;
             }
         }
 
         public async Task<IEnumerable<string>> QueryAllowedCorsOriginsAsync()
         {
-            using (var connection = new SqlConnection(_connectionString))
-            {
-
-                var corsOrigins = await connection.QueryAsync<string>($"select distinct(Origin) from {_options.DbSchema}.[ClientCorsOrigins] where Origin is not null", commandTimeout: _options.CommandTimeOut, commandType: CommandType.Text);
-                return corsOrigins;
-            }
+            await using var connection = new SqlConnection(_connectionString);
+            var corsOrigins = await connection.QueryAsync<string>($"select distinct(Origin) from {_options.DbSchema}.[ClientCorsOrigins] where Origin is not null", commandTimeout: _options.CommandTimeOut, commandType: CommandType.Text);
+            return corsOrigins;
         }
 
 
@@ -333,45 +320,40 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             {
                 return;
             }
-            using (var con = new SqlConnection(_connectionString))
-            {
 
-                con.Open();
-                using (var t = con.BeginTransaction())
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            await using var t = await con.BeginTransactionAsync();
+            try
+            {
+                var ret = await con.ExecuteAsync($"delete from {_options.DbSchema}.Clients where id=@id", new { clientEntity.Id }, commandTimeout: _options.CommandTimeOut, commandType: CommandType.Text, transaction: t);
+                ret = await con.ExecuteAsync($"delete from {_options.DbSchema}.ClientGrantTypes where ClientId=@ClientId;" +
+                                             $"delete from {_options.DbSchema}.ClientRedirectUris where ClientId=@ClientId;" +
+                                             $"delete from {_options.DbSchema}.ClientPostLogoutRedirectUris where ClientId=@ClientId;" +
+                                             $"delete from {_options.DbSchema}.ClientScopes where ClientId=@ClientId;" +
+                                             $"delete from {_options.DbSchema}.ClientSecrets where ClientId=@ClientId;" +
+                                             $"delete from {_options.DbSchema}.ClientClaims where ClientId=@ClientId;" +
+                                             $"delete from {_options.DbSchema}.ClientIdPRestrictions where ClientId=@ClientId;" +
+                                             $"delete from {_options.DbSchema}.ClientCorsOrigins where ClientId=@ClientId;" +
+                                             $"delete from {_options.DbSchema}.ClientProperties where ClientId=@ClientId;", new
                 {
-                    try
-                    {
-                        var ret = await con.ExecuteAsync($"delete from {_options.DbSchema}.Clients where id=@id", new { clientEntity.Id }, commandTimeout: _options.CommandTimeOut, commandType: CommandType.Text, transaction: t);
-                        ret = await con.ExecuteAsync($"delete from {_options.DbSchema}.ClientGrantTypes where ClientId=@ClientId;" +
-                            $"delete from {_options.DbSchema}.ClientRedirectUris where ClientId=@ClientId;" +
-                            $"delete from {_options.DbSchema}.ClientPostLogoutRedirectUris where ClientId=@ClientId;" +
-                            $"delete from {_options.DbSchema}.ClientScopes where ClientId=@ClientId;" +
-                            $"delete from {_options.DbSchema}.ClientSecrets where ClientId=@ClientId;" +
-                            $"delete from {_options.DbSchema}.ClientClaims where ClientId=@ClientId;" +
-                            $"delete from {_options.DbSchema}.ClientIdPRestrictions where ClientId=@ClientId;" +
-                            $"delete from {_options.DbSchema}.ClientCorsOrigins where ClientId=@ClientId;" +
-                            $"delete from {_options.DbSchema}.ClientProperties where ClientId=@ClientId;", new
-                            {
-                                ClientId = clientEntity.Id
-                            }, commandTimeout: _options.CommandTimeOut, commandType: CommandType.Text, transaction: t);
-                        t.Commit();
-                    }
-                    catch (Exception ex)
-                    {
-                        t.Rollback();
-                        throw ex;
-                    }
-                }
+                    ClientId = clientEntity.Id
+                }, commandTimeout: _options.CommandTimeOut, commandType: CommandType.Text, transaction: t);
+                t.Commit();
+            }
+            catch (Exception ex)
+            {
+                t.Rollback();
+                throw ex;
             }
         }
 
 
         public async Task<IEnumerable<ClientGrantTypes>> GetClientGrantTypeByClientId(int ClientId)
         {
-            using (var con = new SqlConnection(_connectionString))
-            {
-                return await GetClientGrantTypeByClientId(ClientId, con, null);
-            }
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            return await GetClientGrantTypeByClientId(ClientId, con, null);
         }
 
         private async Task<IEnumerable<ClientGrantTypes>> GetClientGrantTypeByClientId(int ClientId, IDbConnection con, IDbTransaction t)
@@ -382,22 +364,19 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
 
         public async Task UpdateClientGrantTypeByClientId(IEnumerable<string> clientGrantTypes, int ClientId)
         {
-            using (var con = new SqlConnection(_connectionString))
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            await using var t = await con.BeginTransactionAsync();
+
+            try
             {
-
-                con.Open();
-                var t = con.BeginTransaction();
-
-                try
-                {
-                    await UpdateClientGrantTypeByClientId(clientGrantTypes, ClientId, con, t);
-                    t.Commit();
-                }
-                catch (Exception ex)
-                {
-                    t.Rollback();
-                    throw ex;
-                }
+                await UpdateClientGrantTypeByClientId(clientGrantTypes, ClientId, con, t);
+                t.Commit();
+            }
+            catch (Exception ex)
+            {
+                t.Rollback();
+                throw ex;
             }
         }
 
@@ -430,11 +409,9 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
 
         public async Task<IEnumerable<ClientRedirectUris>> GetClientRedirectUriByClientId(int clientId)
         {
-            using (var con = new SqlConnection(_connectionString))
-            {
-
-                return await GetClientRedirectUriByClientId(clientId, con, null);
-            }
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            return await GetClientRedirectUriByClientId(clientId, con, null);
         }
 
         public async Task<IEnumerable<ClientRedirectUris>> GetClientRedirectUriByClientId(int clientId, IDbConnection con, IDbTransaction t)
@@ -443,22 +420,19 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
         }
         public async Task UpdateClientRedirectUriByClientId(IEnumerable<string> clientRedirectUris, int ClientId)
         {
-            using (var con = new SqlConnection(_connectionString))
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            await using var t = await con.BeginTransactionAsync();
+
+            try
             {
-
-                con.Open();
-                var t = con.BeginTransaction();
-
-                try
-                {
-                    await UpdateClientRedirectUriByClientId(clientRedirectUris, ClientId, con, t);
-                    t.Commit();
-                }
-                catch (Exception ex)
-                {
-                    t.Rollback();
-                    throw ex;
-                }
+                await UpdateClientRedirectUriByClientId(clientRedirectUris, ClientId, con, t);
+                t.Commit();
+            }
+            catch (Exception ex)
+            {
+                t.Rollback();
+                throw ex;
             }
         }
 
@@ -494,11 +468,9 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
 
         public async Task<IEnumerable<Entities.ClientPostLogoutRedirectUris>> GetClientPostLogoutRedirectUriByClientID(int ClientId)
         {
-            using (var con = new SqlConnection(_connectionString))
-            {
-
-                return await GetClientPostLogoutRedirectUriByClientID(ClientId, con, null);
-            }
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            return await GetClientPostLogoutRedirectUriByClientID(ClientId, con, null);
         }
         public async Task<IEnumerable<Entities.ClientPostLogoutRedirectUris>> GetClientPostLogoutRedirectUriByClientID(int ClientId, IDbConnection con, IDbTransaction t)
         {
@@ -506,22 +478,19 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
         }
         public async Task UpdateClientPostLogoutRedirectUriByClientID(IEnumerable<string> clientPostLogoutRedirectUris, int ClientId)
         {
-            using (var con = new SqlConnection(_connectionString))
+            await using var con = new SqlConnection(_connectionString); 
+            await con.OpenAsync();
+            await using var t = await con.BeginTransactionAsync();
+
+            try
             {
-
-                con.Open();
-                var t = con.BeginTransaction();
-
-                try
-                {
-                    await UpdateClientPostLogoutRedirectUriByClientID(clientPostLogoutRedirectUris, ClientId, con, t);
-                    t.Commit();
-                }
-                catch (Exception ex)
-                {
-                    t.Rollback();
-                    throw ex;
-                }
+                await UpdateClientPostLogoutRedirectUriByClientID(clientPostLogoutRedirectUris, ClientId, con, t);
+                t.Commit();
+            }
+            catch (Exception ex)
+            {
+                t.Rollback();
+                throw ex;
             }
         }
 
@@ -557,11 +526,9 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
 
         public async Task<IEnumerable<Entities.ClientScopes>> GetClientScopeByClientId(int clientId)
         {
-            using (var con = new SqlConnection(_connectionString))
-            {
-
-                return await GetClientScopeByClientId(clientId, con, null);
-            }
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            return await GetClientScopeByClientId(clientId, con, null);
         }
         public async Task<IEnumerable<Entities.ClientScopes>> GetClientScopeByClientId(int clientId, IDbConnection con, IDbTransaction t)
         {
@@ -569,22 +536,19 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
         }
         public async Task UpdateClientScopeByClientId(IEnumerable<string> clientScopes, int clientId)
         {
-            using (var con = new SqlConnection(_connectionString))
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            await using var t = await con.BeginTransactionAsync();
+
+            try
             {
-
-                con.Open();
-                var t = con.BeginTransaction();
-
-                try
-                {
-                    await UpdateClientScopeByClientId(clientScopes, clientId, con, t);
-                    t.Commit();
-                }
-                catch (Exception ex)
-                {
-                    t.Rollback();
-                    throw ex;
-                }
+                await UpdateClientScopeByClientId(clientScopes, clientId, con, t);
+                t.Commit();
+            }
+            catch (Exception ex)
+            {
+                t.Rollback();
+                throw ex;
             }
         }
 
@@ -616,11 +580,9 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
 
         public async Task<IEnumerable<Entities.ClientSecrets>> GetClientSecretByClientId(int ClientId)
         {
-            using (var con = new SqlConnection(_connectionString))
-            {
-
-                return await GetClientSecretByClientId(ClientId, con, null);
-            }
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            return await GetClientSecretByClientId(ClientId, con, null);
         }
         public async Task<IEnumerable<Entities.ClientSecrets>> GetClientSecretByClientId(int ClientId, IDbConnection con, IDbTransaction t)
         {
@@ -628,22 +590,19 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
         }
         public async Task UpdateClientSecretByClientId(IEnumerable<Secret> clientSecrets, int ClientId)
         {
-            using (var con = new SqlConnection(_connectionString))
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            await using var t = await con.BeginTransactionAsync();
+
+            try
             {
-
-                con.Open();
-                var t = con.BeginTransaction();
-
-                try
-                {
-                    await UpdateClientSecretByClientId(clientSecrets, ClientId, con, t);
-                    t.Commit();
-                }
-                catch (Exception ex)
-                {
-                    t.Rollback();
-                    throw ex;
-                }
+                await UpdateClientSecretByClientId(clientSecrets, ClientId, con, t);
+                t.Commit();
+            }
+            catch (Exception ex)
+            {
+                t.Rollback();
+                throw ex;
             }
         }
 
@@ -663,7 +622,7 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                     insertParameters.Add($"Expiration", item.Expiration);
                     insertParameters.Add($"Type", item.Type);
                     insertParameters.Add($"Value", item.Value);
-                    insertParameters.Add($"Created", DateTime.UtcNow);
+                    insertParameters.Add($"Created", DateTimeOffset.UtcNow);
                     await con.ExecuteAsync(insertSql.ToString(), insertParameters, transaction: t);
 
                 }
@@ -679,11 +638,9 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
 
         public async Task<IEnumerable<ClientClaims>> GetClientClaimByClientId(int clientId)
         {
-            using (var con = new SqlConnection(_connectionString))
-            {
-
-                return await GetClientClaimByClientId(clientId, con, null);
-            }
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            return await GetClientClaimByClientId(clientId, con, null);
         }
         public async Task<IEnumerable<ClientClaims>> GetClientClaimByClientId(int clientId, IDbConnection con, IDbTransaction t)
         {
@@ -694,22 +651,19 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
         }
         public async Task UpdateClientClaimByClientId(IEnumerable<Claim> clientClaims, int clientId)
         {
-            using (var con = new SqlConnection(_connectionString))
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            await using var t = await con.BeginTransactionAsync();
+
+            try
             {
-
-                con.Open();
-                var t = con.BeginTransaction();
-
-                try
-                {
-                    await UpdateClientClaimByClientId(clientClaims, clientId, con, t);
-                    t.Commit();
-                }
-                catch (Exception ex)
-                {
-                    t.Rollback();
-                    throw ex;
-                }
+                await UpdateClientClaimByClientId(clientClaims, clientId, con, t);
+                t.Commit();
+            }
+            catch (Exception ex)
+            {
+                t.Rollback();
+                throw ex;
             }
         }
 
@@ -741,10 +695,9 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
 
         public async Task<IEnumerable<Entities.ClientIdPRestrictions>> GetClientIdPRestrictionByClientId(int clientId)
         {
-            using (var con = new SqlConnection(_connectionString))
-            {
-                return await GetClientIdPRestrictionByClientId(clientId, con, null);
-            }
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            return await GetClientIdPRestrictionByClientId(clientId, con, null);
         }
         public async Task<IEnumerable<Entities.ClientIdPRestrictions>> GetClientIdPRestrictionByClientId(int clientId, IDbConnection con, IDbTransaction t)
         {
@@ -753,21 +706,19 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
 
         public async Task UpdateClientIdPRestrictionByClientId(IEnumerable<string> clientIdPRestrictions, int clientId)
         {
-            using (var con = new SqlConnection(_connectionString))
-            {
-                con.Open();
-                var t = con.BeginTransaction();
+            await using var con = new SqlConnection(_connectionString); 
+            await con.OpenAsync();
+            await using var t = await con.BeginTransactionAsync();
 
-                try
-                {
-                    await UpdateClientIdPRestrictionByClientId(clientIdPRestrictions, clientId, con, t);
-                    t.Commit();
-                }
-                catch (Exception ex)
-                {
-                    t.Rollback();
-                    throw ex;
-                }
+            try
+            {
+                await UpdateClientIdPRestrictionByClientId(clientIdPRestrictions, clientId, con, t);
+                t.Commit();
+            }
+            catch (Exception ex)
+            {
+                t.Rollback();
+                throw ex;
             }
         }
 
@@ -802,10 +753,9 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
 
         public async Task<IEnumerable<ClientCorsOrigins>> GetClientCorsOriginByClientId(int clientId)
         {
-            using (var con = new SqlConnection(_connectionString))
-            {
-                return await GetClientCorsOriginByClientId(clientId, con, null);
-            }
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            return await GetClientCorsOriginByClientId(clientId, con, null);
         }
         public async Task<IEnumerable<ClientCorsOrigins>> GetClientCorsOriginByClientId(int clientId, IDbConnection con, IDbTransaction t)
         {
@@ -814,22 +764,19 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
 
         public async Task UpdateClientCorsOriginByClientId(IEnumerable<string> clientCorsOrigins, int clientId)
         {
-            using (var con = new SqlConnection(_connectionString))
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            await using var t = await con.BeginTransactionAsync();
+
+            try
             {
-
-                con.Open();
-                var t = con.BeginTransaction();
-
-                try
-                {
-                    await UpdateClientCorsOriginByClientId(clientCorsOrigins, clientId, con, t);
-                    t.Commit();
-                }
-                catch (Exception ex)
-                {
-                    t.Rollback();
-                    throw ex;
-                }
+                await UpdateClientCorsOriginByClientId(clientCorsOrigins, clientId, con, t);
+                t.Commit();
+            }
+            catch (Exception ex)
+            {
+                t.Rollback();
+                throw ex;
             }
         }
 
@@ -865,10 +812,9 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
 
         public async Task<IEnumerable<ClientProperties>> GetClientPropertyByClientId(int clientId)
         {
-            using (var con = new SqlConnection(_connectionString))
-            {
-                return await GetClientPropertyByClientId(clientId, con, null);
-            }
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            return await GetClientPropertyByClientId(clientId, con, null);
         }
         public async Task<IEnumerable<ClientProperties>> GetClientPropertyByClientId(int clientId, IDbConnection con, IDbTransaction t)
         {
@@ -877,21 +823,19 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
 
         public async Task UpdateClientPropertyByClientId(IDictionary<string, string> clientProperties, int ClientId)
         {
-            using (var con = new SqlConnection(_connectionString))
-            {
-                con.Open();
-                var t = con.BeginTransaction();
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            await using var t = await con.BeginTransactionAsync();
 
-                try
-                {
-                    await UpdateClientPropertyByClientId(clientProperties, ClientId, con, t);
-                    t.Commit();
-                }
-                catch (Exception ex)
-                {
-                    t.Rollback();
-                    throw ex;
-                }
+            try
+            {
+                await UpdateClientPropertyByClientId(clientProperties, ClientId, con, t);
+                t.Commit();
+            }
+            catch (Exception ex)
+            {
+                t.Rollback();
+                throw ex;
             }
         }
 
@@ -934,68 +878,63 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                 throw new InvalidOperationException($"Can not find client for clientId={client.ClientId}.");
             }
 
-            var entity = _mapper.Map<Clients>(client);
+            var entity = client.MapClients();
 
             entity.Id = dbClient.Id;
-            using (var con = new SqlConnection(_connectionString))
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync();
+            await using var t = await con.BeginTransactionAsync();
+            try
             {
+                var ret = await con.ExecuteAsync($"update {_options.DbSchema}.Clients set AbsoluteRefreshTokenLifetime = @AbsoluteRefreshTokenLifetime," +
+                                                 $"AccessTokenLifetime=@AccessTokenLifetime," +
+                                                 $"AccessTokenType=@AccessTokenType," +
+                                                 $"AllowAccessTokensViaBrowser=@AllowAccessTokensViaBrowser," +
+                                                 $"AllowOfflineAccess=@AllowOfflineAccess," +
+                                                 $"AllowPlainTextPkce=@AllowPlainTextPkce," +
+                                                 $"AllowRememberConsent=@AllowRememberConsent," +
+                                                 $"AlwaysIncludeUserClaimsInIdToken=@AlwaysIncludeUserClaimsInIdToken," +
+                                                 $"AlwaysSendClientClaims=@AlwaysSendClientClaims," +
+                                                 $"AuthorizationCodeLifetime=@AuthorizationCodeLifetime," +
+                                                 $"BackChannelLogoutSessionRequired=@BackChannelLogoutSessionRequired," +
+                                                 $"BackChannelLogoutUri=@BackChannelLogoutUri," +
+                                                 $"ClientClaimsPrefix=@ClientClaimsPrefix," +
+                                                 $"ClientName=@ClientName," +
+                                                 $"ClientUri=@ClientUri," +
+                                                 $"ConsentLifetime=@ConsentLifetime," +
+                                                 $"Description=@Description," +
+                                                 $"EnableLocalLogin=@EnableLocalLogin," +
+                                                 $"Enabled=@Enabled," +
+                                                 $"FrontChannelLogoutSessionRequired=@FrontChannelLogoutSessionRequired," +
+                                                 $"FrontChannelLogoutUri=@FrontChannelLogoutUri," +
+                                                 $"IdentityTokenLifetime=@IdentityTokenLifetime," +
+                                                 $"IncludeJwtId=@IncludeJwtId," +
+                                                 $"LogoUri=@LogoUri," +
+                                                 $"PairWiseSubjectSalt=@PairWiseSubjectSalt," +
+                                                 $"ProtocolType=@ProtocolType," +
+                                                 $"RefreshTokenExpiration=@RefreshTokenExpiration," +
+                                                 $"RefreshTokenUsage=@RefreshTokenUsage," +
+                                                 $"RequireClientSecret=@RequireClientSecret," +
+                                                 $"RequireConsent=@RequireConsent," +
+                                                 $"RequirePkce=@RequirePkce," +
+                                                 $"SlidingRefreshTokenLifetime=@SlidingRefreshTokenLifetime," +
+                                                 $"UpdateAccessTokenClaimsOnRefresh=@UpdateAccessTokenClaimsOnRefresh where ClientId=@ClientId;", entity, commandTimeout: _options.CommandTimeOut, commandType: CommandType.Text, transaction: t);
 
-                con.Open();
-                using (var t = con.BeginTransaction())
-                {
-                    try
-                    {
-                        var ret = await con.ExecuteAsync($"update {_options.DbSchema}.Clients set AbsoluteRefreshTokenLifetime = @AbsoluteRefreshTokenLifetime," +
-                            $"AccessTokenLifetime=@AccessTokenLifetime," +
-                            $"AccessTokenType=@AccessTokenType," +
-                            $"AllowAccessTokensViaBrowser=@AllowAccessTokensViaBrowser," +
-                            $"AllowOfflineAccess=@AllowOfflineAccess," +
-                            $"AllowPlainTextPkce=@AllowPlainTextPkce," +
-                            $"AllowRememberConsent=@AllowRememberConsent," +
-                            $"AlwaysIncludeUserClaimsInIdToken=@AlwaysIncludeUserClaimsInIdToken," +
-                            $"AlwaysSendClientClaims=@AlwaysSendClientClaims," +
-                            $"AuthorizationCodeLifetime=@AuthorizationCodeLifetime," +
-                            $"BackChannelLogoutSessionRequired=@BackChannelLogoutSessionRequired," +
-                            $"BackChannelLogoutUri=@BackChannelLogoutUri," +
-                            $"ClientClaimsPrefix=@ClientClaimsPrefix," +
-                            $"ClientName=@ClientName," +
-                            $"ClientUri=@ClientUri," +
-                            $"ConsentLifetime=@ConsentLifetime," +
-                            $"Description=@Description," +
-                            $"EnableLocalLogin=@EnableLocalLogin," +
-                            $"Enabled=@Enabled," +
-                            $"FrontChannelLogoutSessionRequired=@FrontChannelLogoutSessionRequired," +
-                            $"FrontChannelLogoutUri=@FrontChannelLogoutUri," +
-                            $"IdentityTokenLifetime=@IdentityTokenLifetime," +
-                            $"IncludeJwtId=@IncludeJwtId," +
-                            $"LogoUri=@LogoUri," +
-                            $"PairWiseSubjectSalt=@PairWiseSubjectSalt," +
-                            $"ProtocolType=@ProtocolType," +
-                            $"RefreshTokenExpiration=@RefreshTokenExpiration," +
-                            $"RefreshTokenUsage=@RefreshTokenUsage," +
-                            $"RequireClientSecret=@RequireClientSecret," +
-                            $"RequireConsent=@RequireConsent," +
-                            $"RequirePkce=@RequirePkce," +
-                            $"SlidingRefreshTokenLifetime=@SlidingRefreshTokenLifetime," +
-                            $"UpdateAccessTokenClaimsOnRefresh=@UpdateAccessTokenClaimsOnRefresh where ClientId=@ClientId;", entity, commandTimeout: _options.CommandTimeOut, commandType: CommandType.Text, transaction: t);
-
-                        await UpdateClientGrantTypeByClientId(client.AllowedGrantTypes, entity.Id, con, t);
-                        await UpdateClientRedirectUriByClientId(client.RedirectUris, entity.Id, con, t);
-                        await UpdateClientPostLogoutRedirectUriByClientID(client.PostLogoutRedirectUris, entity.Id, con, t);
-                        await UpdateClientScopeByClientId(client.AllowedScopes, entity.Id, con, t);
-                        await UpdateClientSecretByClientId(client.ClientSecrets, entity.Id, con, t);
-                        await UpdateClientClaimByClientId(client.Claims, entity.Id, con, t);
-                        await UpdateClientIdPRestrictionByClientId(client.IdentityProviderRestrictions, entity.Id, con, t);
-                        await UpdateClientCorsOriginByClientId(client.AllowedCorsOrigins, entity.Id, con, t);
-                        await UpdateClientPropertyByClientId(client.Properties, entity.Id, con, t);
-                        t.Commit();
-                    }
-                    catch (Exception ex)
-                    {
-                        t.Rollback();
-                        throw ex;
-                    }
-                }
+                await UpdateClientGrantTypeByClientId(client.AllowedGrantTypes, entity.Id, con, t);
+                await UpdateClientRedirectUriByClientId(client.RedirectUris, entity.Id, con, t);
+                await UpdateClientPostLogoutRedirectUriByClientID(client.PostLogoutRedirectUris, entity.Id, con, t);
+                await UpdateClientScopeByClientId(client.AllowedScopes, entity.Id, con, t);
+                await UpdateClientSecretByClientId(client.ClientSecrets, entity.Id, con, t);
+                await UpdateClientClaimByClientId(client.Claims, entity.Id, con, t);
+                await UpdateClientIdPRestrictionByClientId(client.IdentityProviderRestrictions, entity.Id, con, t);
+                await UpdateClientCorsOriginByClientId(client.AllowedCorsOrigins, entity.Id, con, t);
+                await UpdateClientPropertyByClientId(client.Properties, entity.Id, con, t);
+                t.Commit();
+            }
+            catch (Exception ex)
+            {
+                t.Rollback();
+                throw ex;
             }
         }
 
@@ -1007,7 +946,7 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                 throw new InvalidOperationException($"Can not find client for clientId={client.ClientId}.");
             }
 
-            var entity = _mapper.Map<Clients>(client);
+            var entity = client.MapClients();
             entity.Id = dbClient.Id;
             return entity;
         }
