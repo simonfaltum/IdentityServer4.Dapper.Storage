@@ -1,6 +1,5 @@
 ﻿
 using Dapper;
-using IdentityServer4.Dapper.Storage.Entities;
 using IdentityServer4.Dapper.Storage.Options;
 using IdentityServer4.Extensions;
 using IdentityServer4.Models;
@@ -190,7 +189,7 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             {
                 await InsertApiScopeByApiResourceId(apiResource.Scopes, entity.Id, con, t);
             }
-            t.Commit();
+            await t.CommitAsync();
         }
 
         public async Task RemoveAsync(string name)
@@ -220,12 +219,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                 {
                     ApiResourceId = entity.Id
                 }, commandType: CommandType.Text, transaction: t);
-                t.Commit();
+                await t.CommitAsync();
             }
             catch (Exception ex)
             {
-                t.Rollback();
-                throw ex;
+                await t.RollbackAsync();
+                throw;
             }
             finally
             {
@@ -258,12 +257,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                 await UpdateScopesByApiResourceId(apiResource.Scopes, updateEntity.Id, con, t);
                 await UpdateApiSecretsByApiResourceId(apiResource.ApiSecrets, updateEntity.Id, con, t);
                 await UpdateClaimsByApiResourceId(apiResource.UserClaims, updateEntity.Id, con, t);
-                t.Commit();
+                await t.CommitAsync();
             }
             catch (Exception ex)
             {
-                t.Rollback();
-                throw ex;
+                await t.RollbackAsync();
+                throw;
             }
         }
 
@@ -309,12 +308,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             try
             {
                 await UpdateScopesByApiResourceId(apiResource.Scopes, dbItem.Id, con, t);
-                t.Commit();
+                await t.CommitAsync();
             }
             catch (Exception ex)
             {
-                t.Rollback();
-                throw ex;
+                await t.RollbackAsync();
+                throw;
             }
         }
         private async Task InsertApiScopeByApiResourceId(IEnumerable<Scope> apiScopes, int apiResourceId, IDbConnection con, IDbTransaction t)
@@ -481,12 +480,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             try
             {
                 await UpdateClaimsByApiResourceId(apiResource.UserClaims, dbItem.Id, con, t);
-                t.Commit();
+                await t.CommitAsync();
             }
             catch (Exception ex)
             {
-                t.Rollback();
-                throw ex;
+                await t.RollbackAsync();
+                throw;
             }
         }
 

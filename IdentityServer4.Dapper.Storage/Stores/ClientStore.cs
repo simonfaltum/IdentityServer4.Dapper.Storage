@@ -8,16 +8,16 @@ namespace IdentityServer4.Dapper.Storage.Stores
 {
     public class ClientStore : IClientStore
     {
-        private readonly IClientProvider _clientDB;
+        private readonly IClientProvider _clientProvider;
 
         public ClientStore(IClientProvider client)
         {
-            _clientDB = client ?? throw new ArgumentNullException(nameof(client));
+            _clientProvider = client ?? throw new ArgumentNullException(nameof(client));
         }
 
         public async Task<Client> FindClientByIdAsync(string clientId)
         {
-            var client = await _clientDB.FindClientByIdAsync(clientId);
+            var client = await _clientProvider.FindClientByIdAsync(clientId);
 
             return client;
         }

@@ -1,7 +1,6 @@
 ﻿using IdentityServer4.Dapper.Storage.DataLayer;
 using IdentityServer4.Dapper.Storage.Options;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Diagnostics;
 using System.Threading;
@@ -18,7 +17,7 @@ namespace IdentityServer4.Dapper.Storage.Services
 
         public TimeSpan CleanupInterval => TimeSpan.FromSeconds(_options.TokenCleanupInterval);
 
-        public TokenCleanup(IServiceProvider serviceProvider, ILogger<TokenCleanup> logger, OperationalStoreOptions options)
+        public TokenCleanup(IServiceProvider serviceProvider, OperationalStoreOptions options)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
             if (_options.TokenCleanupInterval < 1) throw new ArgumentException("Token cleanup interval must be at least 1 second");
@@ -38,7 +37,7 @@ namespace IdentityServer4.Dapper.Storage.Services
 
             _source = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-            Task.Factory.StartNew(() => StartInternal(_source.Token));
+            Task.Factory.StartNew(() => StartInternal(_source.Token), cancellationToken);
         }
 
         public void Stop()
@@ -111,7 +110,7 @@ namespace IdentityServer4.Dapper.Storage.Services
                         catch (Exception ex)
                         {
                             Debug.WriteLine("Concurrency exception clearing tokens: {exception}", ex.Message);
-                            throw ex; //throw out to stop while loop
+                            throw; //throw out to stop while loop
                         }
                     }
                 }

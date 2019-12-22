@@ -170,12 +170,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                     }
                 }
 
-                t.Commit();
+                await t.CommitAsync();
             }
             catch (Exception ex)
             {
-                t.Rollback();
-                throw ex;
+                await t.RollbackAsync();
+                throw;
             }
         }
 
@@ -198,12 +198,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                     IdentityResourceId = entity.Id
                 }, commandType: CommandType.Text, transaction: t);
                 ret = await con.ExecuteAsync($"delete from {_options.DbSchema}.IdentityResources where id=@id", new { entity.Id }, commandType: CommandType.Text, transaction: t);
-                t.Commit();
+                await t.CommitAsync();
             }
             catch (Exception ex)
             {
-                t.Rollback();
-                throw ex;
+                await t.RollbackAsync();
+                throw;
             }
         }
 
@@ -231,12 +231,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                                                  $"Required=@Required," +
                                                  $"ShowInDiscoveryDocument=@ShowInDiscoveryDocument where Id=@Id;", entity, commandType: CommandType.Text, transaction: t);
                 await UpdateClaims(identityResource.UserClaims, entity.Id, con, t);
-                t.Commit();
+                await t.CommitAsync();
             }
             catch (Exception ex)
             {
-                t.Rollback();
-                throw ex;
+                await t.RollbackAsync();
+                throw;
             }
         }
 

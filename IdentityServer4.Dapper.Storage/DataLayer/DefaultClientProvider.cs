@@ -296,12 +296,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                         }
                     }
                 }
-                transaction.Commit();
+                await transaction.CommitAsync();
             }
             catch (Exception ex)
             {
-                transaction.Rollback();
-                throw ex;
+                await transaction.RollbackAsync();
+                throw;
             }
         }
 
@@ -339,12 +339,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                 {
                     ClientId = clientEntity.Id
                 }, commandTimeout: _options.CommandTimeOut, commandType: CommandType.Text, transaction: t);
-                t.Commit();
+                await t.CommitAsync();
             }
             catch (Exception ex)
             {
-                t.Rollback();
-                throw ex;
+                await t.RollbackAsync();
+                throw;
             }
         }
 
@@ -371,12 +371,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             try
             {
                 await UpdateClientGrantTypeByClientId(clientGrantTypes, ClientId, con, t);
-                t.Commit();
+                await t.CommitAsync();
             }
             catch (Exception ex)
             {
-                t.Rollback();
-                throw ex;
+                await t.RollbackAsync();
+                throw;
             }
         }
 
@@ -427,12 +427,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             try
             {
                 await UpdateClientRedirectUriByClientId(clientRedirectUris, ClientId, con, t);
-                t.Commit();
+                await t.CommitAsync();
             }
             catch (Exception ex)
             {
-                t.Rollback();
-                throw ex;
+                await t.RollbackAsync();
+                throw;
             }
         }
 
@@ -485,12 +485,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             try
             {
                 await UpdateClientPostLogoutRedirectUriByClientID(clientPostLogoutRedirectUris, ClientId, con, t);
-                t.Commit();
+                await t.CommitAsync();
             }
             catch (Exception ex)
             {
-                t.Rollback();
-                throw ex;
+                await t.RollbackAsync();
+                throw;
             }
         }
 
@@ -543,12 +543,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             try
             {
                 await UpdateClientScopeByClientId(clientScopes, clientId, con, t);
-                t.Commit();
+                await t.CommitAsync();
             }
             catch (Exception ex)
             {
-                t.Rollback();
-                throw ex;
+                await t.RollbackAsync();
+                throw;
             }
         }
 
@@ -597,12 +597,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             try
             {
                 await UpdateClientSecretByClientId(clientSecrets, ClientId, con, t);
-                t.Commit();
+                await t.CommitAsync();
             }
             catch (Exception ex)
             {
-                t.Rollback();
-                throw ex;
+                await t.RollbackAsync();
+                throw;
             }
         }
 
@@ -658,12 +658,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             try
             {
                 await UpdateClientClaimByClientId(clientClaims, clientId, con, t);
-                t.Commit();
+                await t.CommitAsync();
             }
             catch (Exception ex)
             {
-                t.Rollback();
-                throw ex;
+                await t.RollbackAsync();
+                throw;
             }
         }
 
@@ -713,12 +713,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             try
             {
                 await UpdateClientIdPRestrictionByClientId(clientIdPRestrictions, clientId, con, t);
-                t.Commit();
+                await t.CommitAsync();
             }
             catch (Exception ex)
             {
-                t.Rollback();
-                throw ex;
+                await t.RollbackAsync();
+                throw;
             }
         }
 
@@ -771,12 +771,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             try
             {
                 await UpdateClientCorsOriginByClientId(clientCorsOrigins, clientId, con, t);
-                t.Commit();
+                await t.CommitAsync();
             }
             catch (Exception ex)
             {
-                t.Rollback();
-                throw ex;
+                await t.RollbackAsync();
+                throw;
             }
         }
 
@@ -830,12 +830,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             try
             {
                 await UpdateClientPropertyByClientId(clientProperties, ClientId, con, t);
-                t.Commit();
+                await t.CommitAsync();
             }
             catch (Exception ex)
             {
-                t.Rollback();
-                throw ex;
+                await t.RollbackAsync();
+                throw;
             }
         }
 
@@ -929,12 +929,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                 await UpdateClientIdPRestrictionByClientId(client.IdentityProviderRestrictions, entity.Id, con, t);
                 await UpdateClientCorsOriginByClientId(client.AllowedCorsOrigins, entity.Id, con, t);
                 await UpdateClientPropertyByClientId(client.Properties, entity.Id, con, t);
-                t.Commit();
+                await t.CommitAsync();
             }
             catch (Exception ex)
             {
-                t.Rollback();
-                throw ex;
+                await t.RollbackAsync();
+                throw;
             }
         }
 

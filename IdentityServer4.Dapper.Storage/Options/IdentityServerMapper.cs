@@ -1,14 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Security.Claims;
-using System.Text;
 using IdentityServer4.Dapper.Storage.Entities;
 using IdentityServer4.Models;
 namespace IdentityServer4.Dapper.Storage.Options
 {
     public static class IdentityServerMapper
     {
-        public static Entities.ApiResources MapApiResources(this ApiResource apiResource)
+        public static ApiResources MapApiResources(this ApiResource apiResource)
         {
             return new ApiResources()
             {

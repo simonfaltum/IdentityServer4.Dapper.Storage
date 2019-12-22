@@ -1,6 +1,5 @@
 ﻿
 using Dapper;
-using IdentityServer4.Dapper.Storage.Entities;
 using IdentityServer4.Dapper.Storage.Options;
 using IdentityServer4.Models;
 using Microsoft.Extensions.Logging;
@@ -36,12 +35,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                 {
                     throw new Exception($"Error inserting into PersistedGrants, return value is {ret}");
                 }
-                t.Commit();
+                await t.CommitAsync();
             }
             catch (Exception ex)
             {
-                t.Rollback();
-                throw ex;
+                await t.RollbackAsync();
+                throw;
             }
         }
 
@@ -116,12 +115,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                 try
                 {
                     var ret = await connection.ExecuteAsync($"delete from {_options.DbSchema}.PersistedGrants where [Key] = @Key", new { Key = key }, commandType: CommandType.Text, transaction: t);
-                    t.Commit();
+                    await t.CommitAsync();
                 }
                 catch (Exception ex)
                 {
-                    t.Rollback();
-                    throw ex;
+                    await t.RollbackAsync();
+                    throw;
                 }
             }
             connection.Close();
@@ -136,12 +135,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                 try
                 {
                     var ret = await connection.ExecuteAsync($"delete from {_options.DbSchema}.PersistedGrants where SubjectId = @SubjectId and ClientId = @ClientId", new { SubjectId = subjectId, ClientId = clientId }, commandType: CommandType.Text, transaction: t);
-                    t.Commit();
+                    await t.CommitAsync();
                 }
                 catch (Exception ex)
                 {
-                    t.Rollback();
-                    throw ex;
+                    await t.RollbackAsync();
+                    throw;
                 }
             }
             connection.Close();
@@ -156,12 +155,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                 try
                 {
                     var ret = await connection.ExecuteAsync($"delete from {_options.DbSchema}.PersistedGrants where SubjectId = @SubjectId and ClientId = @ClientId and [Type] = @Type", new { SubjectId = subjectId, ClientId = clientId, Type = type }, commandType: CommandType.Text, transaction: t);
-                    t.Commit();
+                    await t.CommitAsync();
                 }
                 catch (Exception ex)
                 {
-                    t.Rollback();
-                    throw ex;
+                    await t.RollbackAsync();
+                    throw;
                 }
             }
             connection.Close();
@@ -177,12 +176,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                 try
                 {
                     var ret = await connection.ExecuteAsync($"delete from {_options.DbSchema}.PersistedGrants where Expiration < @UtcNow", new { UtcNow = dateTime }, commandType: CommandType.Text, transaction: t);
-                    t.Commit();
+                    await t.CommitAsync();
                 }
                 catch (Exception ex)
                 {
-                    t.Rollback();
-                    throw ex;
+                    await t.RollbackAsync();
+                    throw;
                 }
             }
             connection.Close();
@@ -220,12 +219,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                 {
                     throw new Exception($"Error updating PersistedGrants, return value is  {ret}");
                 }
-                t.Commit();
+                await t.CommitAsync();
             }
             catch (Exception ex)
             {
-                t.Rollback();
-                throw ex;
+                await t.RollbackAsync();
+                throw;
             }
         }
 
