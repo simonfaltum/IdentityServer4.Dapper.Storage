@@ -4,7 +4,6 @@ namespace IdentityServer4.Dapper.Storage.Entities
 {
     public class ApiResources
     {
-
         public int Id { get; set; }
         public bool Enabled { get; set; }
         public string Name { get; set; }
@@ -14,7 +13,7 @@ namespace IdentityServer4.Dapper.Storage.Entities
         public DateTime? Updated { get; set; }
         public DateTime? LastAccessed { get; set; }
         public bool NonEditable { get; set; }
-
-
+        public bool ShowInDiscoveryDocument { get; set; }
+        public string AllowedAccessTokenSigningAlgorithms { get; set; }
     }
 }

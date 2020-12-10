@@ -2,10 +2,8 @@
 
 namespace IdentityServer4.Dapper.Storage.Entities
 {
-    public partial class Clients
+    public class Clients
     {
-
-
         public int Id { get; set; }
         public bool Enabled { get; set; }
         public string ClientId { get; set; }
@@ -48,7 +46,7 @@ namespace IdentityServer4.Dapper.Storage.Entities
         public string UserCodeType { get; set; }
         public int DeviceCodeLifetime { get; set; }
         public bool NonEditable { get; set; }
-
-
+        public string AllowedIdentityTokenSigningAlgorithms { get; set; }
+        public bool RequireRequestObject { get; set; }
     }
 }

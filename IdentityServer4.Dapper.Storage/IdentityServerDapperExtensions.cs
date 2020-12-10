@@ -1,11 +1,12 @@
-﻿using IdentityServer4.Dapper.Storage.Options;
+﻿using System;
+using System.Linq;
+using IdentityServer4.Dapper.Storage.DataLayer;
+using IdentityServer4.Dapper.Storage.Options;
 using IdentityServer4.Dapper.Storage.Services;
 using IdentityServer4.Dapper.Storage.Stores;
 using IdentityServer4.Stores;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System;
-using System.Linq;
 
 namespace IdentityServer4.Dapper.Storage
 {
@@ -14,8 +15,6 @@ namespace IdentityServer4.Dapper.Storage
     /// </summary>
     public static class IdentityServerDapperExtensions
     {
-
-
         public static IIdentityServerBuilder AddSQLConnection(this IIdentityServerBuilder builder, Action<DBProviderOptions> dbProviderOptionsAction = null)
         {
             var options = GetDefaultOptions();
@@ -26,13 +25,13 @@ namespace IdentityServer4.Dapper.Storage
         public static DBProviderOptions GetDefaultOptions()
         {
             //config mssql
-            var options = new DBProviderOptions();
-            options.GetLastInsertID = "select @@IDENTITY;";
+            var options = new DBProviderOptions
+            {
+                GetLastInsertID = "select @@IDENTITY;"
+            };
 
             return options;
         }
-
-
 
         /// <summary>
         /// Configures Dapper implementation of IClientStore, IResourceStore, and ICorsPolicyService with IdentityServer.
@@ -46,10 +45,10 @@ namespace IdentityServer4.Dapper.Storage
             storeOptionsAction?.Invoke(options);
             builder.Services.AddSingleton(options);
 
-            builder.Services.AddTransient<DataLayer.IClientProvider, DataLayer.DefaultClientProvider>();
-            builder.Services.AddTransient<DataLayer.IApiResourceProvider, DataLayer.DefaultApiResourceProvider>();
-            builder.Services.AddTransient<DataLayer.IIdentityResourceProvider, DataLayer.DefaultIdentityResourceProvider>();
-
+            builder.Services.AddSingleton<IClientProvider, DefaultClientProvider>();
+            builder.Services.AddSingleton<IApiResourceProvider, DefaultApiResourceProvider>();
+            builder.Services.AddSingleton<IIdentityResourceProvider, DefaultIdentityResourceProvider>();
+            builder.Services.AddSingleton<IApiScopesProvider, DefaultApiScopesProvider>();
             builder.AddClientStore<ClientStore>();
             builder.AddResourceStore<ResourceStore>();
             builder.AddCorsPolicyService<CorsPolicyService>();
@@ -67,7 +66,7 @@ namespace IdentityServer4.Dapper.Storage
             builder.Services.AddSingleton<TokenCleanup>();
             builder.Services.AddSingleton<IHostedService, TokenCleanupHost>();//auto clear expired tokens
 
-            builder.Services.AddTransient<DataLayer.IPersistedGrantProvider, DataLayer.DefaultPersistedGrantProvider>();
+            builder.Services.AddSingleton<IPersistedGrantProvider, DefaultPersistedGrantProvider>();
 
             var storeOptions = new OperationalStoreOptions();
             storeOptionsAction?.Invoke(storeOptions);
@@ -83,7 +82,6 @@ namespace IdentityServer4.Dapper.Storage
             return builder;
         }
 
-
         /// <summary>
         /// Sets up IClientProvider, IApiResourceProvider and IIdentityResourceProvider interfaces. Useful if you need to read/write to persistence from outside IdentityServer, i.e. adding new clients.
         /// This should only be used if IdentityServer is not used/added to the project directly.
@@ -96,9 +94,9 @@ namespace IdentityServer4.Dapper.Storage
             var options = GetDefaultOptions();
             dbProviderOptionsAction?.Invoke(options);
             services.AddSingleton(options);
-            services.AddTransient<DataLayer.IClientProvider, DataLayer.DefaultClientProvider>();
-            services.AddTransient<DataLayer.IApiResourceProvider, DataLayer.DefaultApiResourceProvider>();
-            services.AddTransient<DataLayer.IIdentityResourceProvider, DataLayer.DefaultIdentityResourceProvider>();
+            services.AddSingleton<IClientProvider, DefaultClientProvider>();
+            services.AddSingleton<IApiResourceProvider, DefaultApiResourceProvider>();
+            services.AddSingleton<IIdentityResourceProvider, DefaultIdentityResourceProvider>();
             return services;
         }
     }

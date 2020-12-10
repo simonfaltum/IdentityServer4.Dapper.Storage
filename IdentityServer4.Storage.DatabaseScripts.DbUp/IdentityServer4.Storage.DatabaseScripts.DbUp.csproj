@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
-    <Version>3.1.0.0</Version>
+    <TargetFrameworks>net5.0</TargetFrameworks>
+    <Version>4.0.0.0</Version>
     <Authors>Simon Faltum</Authors>
     <Company>Very Good Consulting Company</Company>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
@@ -23,12 +23,18 @@
   <ItemGroup>
     <EmbeddedResource Include="EveryRun\EnsureSchema.sql" />
     <EmbeddedResource Include="IdentityServerScripts\20190718123000-CreateIdentityServer.sql" />
+    <None Remove="IdentityServerScripts\20200703124500-UpgradeToVersion4IdentityServer.sql" />
+    <EmbeddedResource Include="IdentityServerScripts\20200703124500-UpgradeToVersion4IdentityServer.sql" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="dbup-core" Version="4.3.1" />
-    <PackageReference Include="dbup-sqlserver" Version="4.3.1" />
-    <PackageReference Include="IdentityServer4" Version="3.1.0" />
+    <PackageReference Include="dbup-core" Version="4.5.0" />
+    <PackageReference Include="dbup-sqlserver" Version="4.5.0" />
+    <PackageReference Include="IdentityServer4" Version="4.1.1" />
+    <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="3.3.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>

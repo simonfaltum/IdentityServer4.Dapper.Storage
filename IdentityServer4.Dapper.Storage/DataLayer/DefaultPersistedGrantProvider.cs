@@ -1,26 +1,26 @@
 ﻿
-using Dapper;
-using IdentityServer4.Dapper.Storage.Options;
-using IdentityServer4.Models;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Threading.Tasks;
+using Dapper;
+using IdentityServer4.Dapper.Storage.Entities;
+using IdentityServer4.Dapper.Storage.Options;
+using IdentityServer4.Models;
+using Microsoft.Extensions.Logging;
 
 namespace IdentityServer4.Dapper.Storage.DataLayer
 {
     public class DefaultPersistedGrantProvider : IPersistedGrantProvider
     {
-        private DBProviderOptions _options;
+        private readonly DBProviderOptions _options;
         private readonly string _connectionString;
         public DefaultPersistedGrantProvider(DBProviderOptions dBProviderOptions, ILogger<DefaultPersistedGrantProvider> logger)
         {
-            this._options = dBProviderOptions ?? throw new ArgumentNullException(nameof(dBProviderOptions));
+            _options = dBProviderOptions ?? throw new ArgumentNullException(nameof(dBProviderOptions));
             _connectionString = dBProviderOptions.ConnectionString;
         }
-
 
         public async Task Add(PersistedGrant token)
         {
@@ -37,7 +37,7 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                 }
                 await t.CommitAsync();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 await t.RollbackAsync();
                 throw;
@@ -53,7 +53,7 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
 
             await using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync();
-            var persistedGrant = await connection.QueryFirstOrDefaultAsync<Entities.PersistedGrants>($"select * from {_options.DbSchema}.PersistedGrants where [Key] = @Key", new { Key = key }, commandType: CommandType.Text);
+            var persistedGrant = await connection.QueryFirstOrDefaultAsync<PersistedGrants>($"select * from {_options.DbSchema}.PersistedGrants where [Key] = @Key", new { Key = key }, commandType: CommandType.Text);
             if (persistedGrant == null)
                 return null;
             var model = persistedGrant.MapPersistedGrant();
@@ -63,7 +63,6 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
         public async Task<IEnumerable<PersistedGrant>> GetAll(string subjectId)
         {
             return await GetAll(subjectId, null, null);
-
         }
 
         public async Task<IEnumerable<PersistedGrant>> GetAll(string subjectId, string clientId)
@@ -81,10 +80,10 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             clientId = string.IsNullOrWhiteSpace(clientId) ? null : clientId;
             type = string.IsNullOrWhiteSpace(type) ? null : type;
 
-            IEnumerable<Entities.PersistedGrants> persistedGrants = null;
+            IEnumerable<PersistedGrants> persistedGrants = null;
             await using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync();
-            persistedGrants = await connection.QueryAsync<Entities.PersistedGrants>($"select * from {_options.DbSchema}.PersistedGrants where (SubjectId = @SubjectId or @SubjectId is null) and (ClientId = @ClientId or @ClientId is null) and ([Type] = @Type or @Type is null)", new { SubjectId = subjectId, ClientId = clientId, Type = type }, commandType: CommandType.Text);
+            persistedGrants = await connection.QueryAsync<PersistedGrants>($"select * from {_options.DbSchema}.PersistedGrants where (SubjectId = @SubjectId or @SubjectId is null) and (ClientId = @ClientId or @ClientId is null) and ([Type] = @Type or @Type is null)", new { SubjectId = subjectId, ClientId = clientId, Type = type }, commandType: CommandType.Text);
             var results = new List<PersistedGrant>();
             persistedGrants.AsList().ForEach(x => results.Add(x.MapPersistedGrant()));
             return results;
@@ -108,7 +107,7 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                 return;
             }
 
-            await using var connection = new SqlConnection(_connectionString); 
+            await using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync();
             await using (var t = await connection.BeginTransactionAsync())
             {
@@ -117,7 +116,7 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                     var ret = await connection.ExecuteAsync($"delete from {_options.DbSchema}.PersistedGrants where [Key] = @Key", new { Key = key }, commandType: CommandType.Text, transaction: t);
                     await t.CommitAsync();
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     await t.RollbackAsync();
                     throw;
@@ -137,7 +136,7 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                     var ret = await connection.ExecuteAsync($"delete from {_options.DbSchema}.PersistedGrants where SubjectId = @SubjectId and ClientId = @ClientId", new { SubjectId = subjectId, ClientId = clientId }, commandType: CommandType.Text, transaction: t);
                     await t.CommitAsync();
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     await t.RollbackAsync();
                     throw;
@@ -157,7 +156,7 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                     var ret = await connection.ExecuteAsync($"delete from {_options.DbSchema}.PersistedGrants where SubjectId = @SubjectId and ClientId = @ClientId and [Type] = @Type", new { SubjectId = subjectId, ClientId = clientId, Type = type }, commandType: CommandType.Text, transaction: t);
                     await t.CommitAsync();
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     await t.RollbackAsync();
                     throw;
@@ -178,7 +177,7 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                     var ret = await connection.ExecuteAsync($"delete from {_options.DbSchema}.PersistedGrants where Expiration < @UtcNow", new { UtcNow = dateTime }, commandType: CommandType.Text, transaction: t);
                     await t.CommitAsync();
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     await t.RollbackAsync();
                     throw;
@@ -201,12 +200,12 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
             try
             {
                 var ret = await con.ExecuteAsync($"update {_options.DbSchema}.PersistedGrants " +
-                                                 $"set ClientId = @ClientId," +
-                                                 $"[Data] = @Data, " +
-                                                 $"Expiration = @Expiration, " +
-                                                 $"SubjectId = @SubjectId, " +
-                                                 $"[Type] = @Type " +
-                                                 $"where [Key] = @Key", new
+                                                 "set ClientId = @ClientId," +
+                                                 "[Data] = @Data, " +
+                                                 "Expiration = @Expiration, " +
+                                                 "SubjectId = @SubjectId, " +
+                                                 "[Type] = @Type " +
+                                                 "where [Key] = @Key", new
                 {
                     entity.Key,
                     entity.ClientId,
@@ -221,12 +220,11 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
                 }
                 await t.CommitAsync();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 await t.RollbackAsync();
                 throw;
             }
         }
-
     }
 }

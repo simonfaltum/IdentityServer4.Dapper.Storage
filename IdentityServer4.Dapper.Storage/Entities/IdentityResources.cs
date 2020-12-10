@@ -4,8 +4,6 @@ namespace IdentityServer4.Dapper.Storage.Entities
 {
     public class IdentityResources
     {
-
-
         public int Id { get; set; }
         public bool Enabled { get; set; }
         public string Name { get; set; }
@@ -17,6 +15,5 @@ namespace IdentityServer4.Dapper.Storage.Entities
         public DateTime Created { get; set; } = DateTime.UtcNow;
         public DateTime? Updated { get; set; }
         public bool NonEditable { get; set; }
-
     }
 }

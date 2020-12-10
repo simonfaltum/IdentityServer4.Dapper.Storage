@@ -1,7 +1,7 @@
-﻿using IdentityServer4.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using IdentityServer4.Models;
 
 namespace IdentityServer4.Dapper.Storage.DataLayer
 {
@@ -17,9 +17,7 @@ namespace IdentityServer4.Dapper.Storage.DataLayer
         Task RemoveAll(string subjectId, string clientId, string type);
         Task Remove(string key);
 
-
         Task<int> QueryExpired(DateTimeOffset dateTime);
         Task RemoveRange(DateTimeOffset dateTime);
-
     }
 }

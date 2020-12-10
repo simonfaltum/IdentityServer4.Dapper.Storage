@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using IdentityServer4.Dapper.Storage.DataLayer;
+using IdentityServer4.Dapper.Storage.Options;
 using IdentityServer4.Storage.DatabaseScripts.DbUp.Interfaces;
 using IdentityServer4.Storage.DatabaseScripts.DbUp.Seeding;
 
@@ -8,7 +9,6 @@ namespace IdentityServer4.Storage.DatabaseScripts.DbUp.Services
 {
     public class IdentityServerConfigService : IIdentityServerConfigService
     {
-
         private readonly IIdentityResourceProvider identityResourceProvider;
         private readonly IApiResourceProvider apiResourceProvider;
         private readonly IClientProvider clientProvider;
@@ -19,16 +19,22 @@ namespace IdentityServer4.Storage.DatabaseScripts.DbUp.Services
             this.identityResourceProvider = identityResourceProvider;
             this.apiResourceProvider = apiResourceProvider;
         }
+        
+        public IdentityServerConfigService(string connectionString, string schema)
+        {
+            var dbSchema = schema.IndexOf("[", StringComparison.InvariantCultureIgnoreCase) >= 0 ? schema : $"[{schema}]";
+            this.clientProvider = new DefaultClientProvider(new DBProviderOptions(){ ConnectionString = connectionString, DbSchema = dbSchema }, null);
+            this.identityResourceProvider = new DefaultIdentityResourceProvider(new DBProviderOptions(){ ConnectionString = connectionString, DbSchema = dbSchema }, null);
+            this.apiResourceProvider = new DefaultApiResourceProvider(new DBProviderOptions(){ ConnectionString = connectionString, DbSchema = dbSchema }, null);
+        }
         public void SetupIdentityDefaultConfig()
         {
-
             Console.WriteLine("Seeding database...");
             EnsureSeedClientData();
             EnsureSeedIdentityResourcesData();
             EnsureSeedApiResourcesData();
             Console.WriteLine("Done seeding database.");
             Console.WriteLine();
-
         }
         private void EnsureSeedClientData()
         {

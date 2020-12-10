@@ -6,6 +6,5 @@
         public string Key { get; set; }
         public string Value { get; set; }
         public int IdentityResourceId { get; set; }
-
     }
 }

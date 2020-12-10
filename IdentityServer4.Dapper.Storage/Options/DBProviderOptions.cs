@@ -17,9 +17,6 @@
         /// <summary>
         ///  sql for get new id inserted
         /// </summary>
-        public string GetLastInsertID { get; set; }
-
-
-
+        public string GetLastInsertID { get; set; } = "select @@IDENTITY;";
     }
 }

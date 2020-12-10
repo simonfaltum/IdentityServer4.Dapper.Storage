@@ -1,10 +1,10 @@
-﻿using IdentityServer4.Dapper.Storage.DataLayer;
-using IdentityServer4.Dapper.Storage.Options;
-using Microsoft.Extensions.DependencyInjection;
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using IdentityServer4.Dapper.Storage.DataLayer;
+using IdentityServer4.Dapper.Storage.Options;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace IdentityServer4.Dapper.Storage.Services
 {

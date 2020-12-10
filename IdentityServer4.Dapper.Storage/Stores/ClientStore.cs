@@ -1,8 +1,8 @@
-﻿using IdentityServer4.Dapper.Storage.DataLayer;
+﻿using System;
+using System.Threading.Tasks;
+using IdentityServer4.Dapper.Storage.DataLayer;
 using IdentityServer4.Models;
 using IdentityServer4.Stores;
-using System;
-using System.Threading.Tasks;
 
 namespace IdentityServer4.Dapper.Storage.Stores
 {

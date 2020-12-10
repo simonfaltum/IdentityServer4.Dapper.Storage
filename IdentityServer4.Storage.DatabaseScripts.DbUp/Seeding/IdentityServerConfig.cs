@@ -5,13 +5,12 @@ namespace IdentityServer4.Storage.DatabaseScripts.DbUp.Seeding
 {
     public static class IdentityServerConfig
     {
-
         public static IEnumerable<IdentityResource> GetIdentityResources()
         {
             return new List<IdentityResource>
             {
                 new IdentityResources.OpenId(),
-                new IdentityResources.Profile(),
+                new IdentityResources.Profile()
             };
         }
 
@@ -100,7 +99,6 @@ namespace IdentityServer4.Storage.DatabaseScripts.DbUp.Seeding
                     }
                 }
             };
-
         }
     }
 }

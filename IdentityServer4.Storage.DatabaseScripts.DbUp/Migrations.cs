@@ -1,29 +1,34 @@
-﻿using DbUp;
-using DbUp.Helpers;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using DbUp;
+using DbUp.Helpers;
 using IdentityServer4.Storage.DatabaseScripts.DbUp.Interfaces;
 using IdentityServer4.Storage.DatabaseScripts.DbUp.Options;
+using IdentityServer4.Storage.DatabaseScripts.DbUp.Services;
 
 namespace IdentityServer4.Storage.DatabaseScripts.DbUp
 {
-    public class Migrations : IIdentityServerMigrations
+    public class DefaultIdentityServerMigrations : IIdentityServerMigrations
     {
-        private readonly IIdentityServerConfigService identityServerConfigHandler;
+        private readonly IIdentityServerConfigService _identityServerConfigHandler;
         private readonly string _connectionString;
         private readonly string _schema;
 
-        public Migrations(DBProviderOptions options, IIdentityServerConfigService identityServerConfigHandler)
+        public DefaultIdentityServerMigrations(DBProviderOptions options, IIdentityServerConfigService identityServerConfigHandler)
         {
-
-            this.identityServerConfigHandler = identityServerConfigHandler;
+            _identityServerConfigHandler = identityServerConfigHandler;
             _schema = options.DbSchema;
             _connectionString = options.ConnectionString;
-
         }
 
-
+        public DefaultIdentityServerMigrations(string connectionString, string schema)
+        {
+            _identityServerConfigHandler = new IdentityServerConfigService(connectionString,schema);
+            _schema = schema;
+            _connectionString = connectionString;
+        }
+        
         public bool UpgradeDatabase(bool withSeed = false)
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
@@ -36,7 +41,7 @@ namespace IdentityServer4.Storage.DatabaseScripts.DbUp
                 fullSuccess = false;
             if (withSeed)
             {
-                identityServerConfigHandler.SetupIdentityDefaultConfig();
+                _identityServerConfigHandler.SetupIdentityDefaultConfig();
             }
 
             return fullSuccess;
@@ -46,13 +51,15 @@ namespace IdentityServer4.Storage.DatabaseScripts.DbUp
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine($"Preparing to upgrade {schema}");
-            var variableSubstitutions = new Dictionary<string, string>();
-            variableSubstitutions.Add("schemaname", $"{schema}");
+            var variableSubstitutions = new Dictionary<string, string>
+            {
+                { "schemaname", $"{schema}" }
+            };
 
             Console.ResetColor();
             var upgradeEngine = DeployChanges.To
                 .SqlDatabase(connectionString)
-                .WithScriptsEmbeddedInAssembly(Assembly.GetExecutingAssembly(), (s) => s.Contains("EveryRun"))
+                .WithScriptsEmbeddedInAssembly(Assembly.GetExecutingAssembly(), s => s.Contains("EveryRun"))
                 .WithVariable("schemaname", $"{schema}")
                 .JournalTo(new NullJournal())
                 .WithTransaction()
@@ -74,26 +81,26 @@ namespace IdentityServer4.Storage.DatabaseScripts.DbUp
                 }
             }
 
-
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("Success!");
             Console.ResetColor();
             return 0;
         }
 
-
         public static int UpgradeDatabase(string connectionString, string schema, string scriptFolder)
         {
             EnsureSchema(connectionString, schema);
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine($"Preparing to upgrade {schema}");
-            var variableSubstitutions = new Dictionary<string, string>();
-            variableSubstitutions.Add("schemaname", $"{schema}");
+            var variableSubstitutions = new Dictionary<string, string>
+            {
+                { "schemaname", $"{schema}" }
+            };
 
             Console.ResetColor();
             var upgradeEngine = DeployChanges.To
                 .SqlDatabase(connectionString)
-                .WithScriptsEmbeddedInAssembly(Assembly.GetExecutingAssembly(), (s) => s.Contains(scriptFolder))
+                .WithScriptsEmbeddedInAssembly(Assembly.GetExecutingAssembly(), s => s.Contains(scriptFolder))
                 .WithVariable("schemaname", $"{schema}")
                 .JournalToSqlTable(schema, "SchemaVersions")
                 .WithTransaction()
@@ -115,16 +122,11 @@ namespace IdentityServer4.Storage.DatabaseScripts.DbUp
                 }
             }
 
-
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("Success!");
             Console.ResetColor();
 
-
             return 0;
-
-
         }
-
     }
 }

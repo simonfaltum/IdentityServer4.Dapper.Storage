@@ -1,19 +1,24 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Security.Claims;
 using IdentityServer4.Dapper.Storage.Entities;
 using IdentityServer4.Models;
+using IdentityResources = IdentityServer4.Dapper.Storage.Entities.IdentityResources;
+
 namespace IdentityServer4.Dapper.Storage.Options
 {
     public static class IdentityServerMapper
     {
         public static ApiResources MapApiResources(this ApiResource apiResource)
         {
-            return new ApiResources()
+            return new ApiResources
             {
                 Enabled = apiResource.Enabled,
                 Name = apiResource.Name,
                 DisplayName = apiResource.DisplayName,
-                Description = apiResource.Description
+                Description = apiResource.Description,
+                ShowInDiscoveryDocument = apiResource.ShowInDiscoveryDocument,
+                AllowedAccessTokenSigningAlgorithms = apiResource.AllowedAccessTokenSigningAlgorithms?.FirstOrDefault()
             };
         }
 
@@ -22,34 +27,36 @@ namespace IdentityServer4.Dapper.Storage.Options
             return new ApiResource(name: apiResources.Name, displayName: apiResources.DisplayName)
             {
                 Enabled = apiResources.Enabled,
-                Description = apiResources.Description
+                Description = apiResources.Description,
+                ShowInDiscoveryDocument = apiResources.ShowInDiscoveryDocument,
+                AllowedAccessTokenSigningAlgorithms = string.IsNullOrWhiteSpace(apiResources.AllowedAccessTokenSigningAlgorithms) ? new List<string>(): new List<string>(){apiResources.AllowedAccessTokenSigningAlgorithms}
             };
         }
-
-        public static ApiClaims MapApiClaims(this string claim)
+ 
+        public static ApiResourceClaims MapApiResourceClaims(this string claim)
         {
-            return new ApiClaims()
+            return new ApiResourceClaims
             {
                 Type = claim
             };
         }
 
-        public static string MapApiClaim(this ApiClaims apiClaims)
+        public static string MapApiClaim(this ApiResourceClaims ApiResourceClaims)
         {
-            return apiClaims.Type;
+            return ApiResourceClaims.Type;
         }
 
-        public static Secret MapSecret(this ApiSecrets apiSecrets)
+        public static Secret MapSecret(this ApiResourceSecrets ApiResourceSecrets)
         {
-            return new Secret(value: apiSecrets.Value, description: apiSecrets.Description, expiration: apiSecrets.Expiration)
+            return new Secret(value: ApiResourceSecrets.Value, description: ApiResourceSecrets.Description, expiration: ApiResourceSecrets.Expiration)
             {
-                Type = apiSecrets.Type
+                Type = ApiResourceSecrets.Type
             };
         }
 
-        public static ApiSecrets MapApiSecret(this Secret secret)
+        public static ApiResourceSecrets MapApiSecret(this Secret secret)
         {
-            return new ApiSecrets()
+            return new ApiResourceSecrets
             {
                 Description = secret.Description,
                 Value = secret.Value,
@@ -58,46 +65,60 @@ namespace IdentityServer4.Dapper.Storage.Options
             };
         }
 
-        public static Scope MapScope(this ApiScopes apiScopes)
+        public static ApiScope MapScope(this ApiScopes apiScopes)
         {
-            return new Scope(name: apiScopes.Name, displayName: apiScopes.DisplayName)
+            return new ApiScope(name: apiScopes.Name, displayName: apiScopes.DisplayName)
             {
                 Description = apiScopes.Description,
                 Required = apiScopes.Required,
                 Emphasize = apiScopes.Emphasize,
-                ShowInDiscoveryDocument = apiScopes.ShowInDiscoveryDocument
+                ShowInDiscoveryDocument = apiScopes.ShowInDiscoveryDocument,
+                Enabled = apiScopes.Enabled
             };
         }
 
-        public static ApiScopes MapApiScopes(this Scope scope)
+        public static ApiScopes MapApiScopes(this ApiScope scope)
         {
-            return new ApiScopes()
+            return new ApiScopes
             {
                 Name = scope.Name,
                 DisplayName = scope.DisplayName,
                 Description = scope.Description,
                 Required = scope.Required,
                 Emphasize = scope.Emphasize,
-                ShowInDiscoveryDocument = scope.ShowInDiscoveryDocument
+                ShowInDiscoveryDocument = scope.ShowInDiscoveryDocument,
+                Enabled = scope.Enabled
             };
         }
 
         public static ApiScopeClaims MapApiScopeClaims(this string claim)
         {
-            return new ApiScopeClaims()
+            return new ApiScopeClaims
             {
                 Type = claim
             };
         }
 
-        public static string MapApiScopeClaim(this ApiScopeClaims apiClaims)
+        public static ApiScopes MapApiScopes(this string apiScope)
         {
-            return apiClaims.Type;
+            return new ApiScopes()
+            {
+                Name = apiScope,
+                ShowInDiscoveryDocument = true,
+                Required = false,
+                Emphasize = false,
+            };
+        }
+       
+
+        public static string MapApiScopeClaim(this ApiScopeClaims ApiResourceClaims)
+        {
+            return ApiResourceClaims.Type;
         }
 
         public static ClientProperties MapClientProperties(this KeyValuePair<string, string> keyValuePair)
         {
-            return new ClientProperties()
+            return new ClientProperties
             {
                 Key = keyValuePair.Key,
                 Value = keyValuePair.Value
@@ -111,7 +132,7 @@ namespace IdentityServer4.Dapper.Storage.Options
 
         public static Clients MapClients(this Client client)
         {
-            return new Clients()
+            return new Clients
             {
                 Enabled = client.Enabled,
                 ClientId = client.ClientId,
@@ -149,13 +170,16 @@ namespace IdentityServer4.Dapper.Storage.Options
                 PairWiseSubjectSalt = client.PairWiseSubjectSalt,
                 UserSsoLifetime = client.UserSsoLifetime,
                 UserCodeType = client.UserCodeType,
-                DeviceCodeLifetime = client.DeviceCodeLifetime
+                DeviceCodeLifetime = client.DeviceCodeLifetime,
+                RequireRequestObject = client.RequireRequestObject,
+                AllowedIdentityTokenSigningAlgorithms = client.AllowedIdentityTokenSigningAlgorithms?.FirstOrDefault()
+                
             };
         }
 
         public static Client MapClient(this Clients clients)
         {
-            return new Client()
+            return new Client
             {
                 Enabled = clients.Enabled,
                 ClientId = clients.ClientId,
@@ -193,7 +217,9 @@ namespace IdentityServer4.Dapper.Storage.Options
                 PairWiseSubjectSalt = clients.PairWiseSubjectSalt,
                 UserSsoLifetime = clients.UserSsoLifetime,
                 UserCodeType = clients.UserCodeType,
-                DeviceCodeLifetime = clients.DeviceCodeLifetime
+                DeviceCodeLifetime = clients.DeviceCodeLifetime,
+                RequireRequestObject = clients.RequireRequestObject,
+                AllowedIdentityTokenSigningAlgorithms = string.IsNullOrWhiteSpace(clients.AllowedIdentityTokenSigningAlgorithms) ? new List<string>() : new List<string>(){clients.AllowedIdentityTokenSigningAlgorithms}
             };
         }
 
@@ -204,7 +230,7 @@ namespace IdentityServer4.Dapper.Storage.Options
 
         public static ClientCorsOrigins MapCorsOrigin(this string origin)
         {
-            return new ClientCorsOrigins()
+            return new ClientCorsOrigins
             {
                 Origin = origin
             };
@@ -217,7 +243,7 @@ namespace IdentityServer4.Dapper.Storage.Options
 
         public static ClientIdPRestrictions MapClientIdPRestrictions(this string str)
         {
-            return new ClientIdPRestrictions()
+            return new ClientIdPRestrictions
             {
                 Provider = str
             };
@@ -225,16 +251,16 @@ namespace IdentityServer4.Dapper.Storage.Options
 
         public static ClientClaims MapClientClaims(this Claim claim)
         {
-            return new ClientClaims()
+            return new ClientClaims
             {
                 Type = claim.Type,
                 Value = claim.Value
             };
         }
 
-        public static Claim MapClaim(this ClientClaims clientClaims)
+        public static ClientClaim MapClaim(this ClientClaims clientClaims)
         {
-            return new Claim(type: clientClaims.Type, value: clientClaims.Value);
+            return new ClientClaim(type: clientClaims.Type, value: clientClaims.Value);
         }
 
         public static string MapClientScopes(this ClientScopes client)
@@ -244,7 +270,7 @@ namespace IdentityServer4.Dapper.Storage.Options
 
         public static ClientScopes MapClientScopes(this string str)
         {
-            return new ClientScopes()
+            return new ClientScopes
             {
                 Scope = str
             };
@@ -257,7 +283,7 @@ namespace IdentityServer4.Dapper.Storage.Options
 
         public static ClientPostLogoutRedirectUris MapClientPostLogoutRedirectUris(this string str)
         {
-            return new ClientPostLogoutRedirectUris()
+            return new ClientPostLogoutRedirectUris
             {
                 PostLogoutRedirectUri = str
             };
@@ -270,7 +296,7 @@ namespace IdentityServer4.Dapper.Storage.Options
 
         public static ClientRedirectUris MapClientRedirectUris(this string str)
         {
-            return new ClientRedirectUris()
+            return new ClientRedirectUris
             {
                 RedirectUri = str
             };
@@ -283,20 +309,20 @@ namespace IdentityServer4.Dapper.Storage.Options
 
         public static ClientGrantTypes MapClientGrantTypes(this string str)
         {
-            return new ClientGrantTypes()
+            return new ClientGrantTypes
             {
                 GrantType = str
             };
         }
 
-        public static string MapIdentityClaims(this IdentityClaims client)
+        public static string MapIdentityResourceClaims(this IdentityResourceClaims client)
         {
             return client.Type;
         }
 
-        public static IdentityClaims MapIdentityClaims(this string str)
+        public static IdentityResourceClaims MapIdentityResourceClaims(this string str)
         {
-            return new IdentityClaims()
+            return new IdentityResourceClaims
             {
                 Type = str
             };
@@ -304,7 +330,7 @@ namespace IdentityServer4.Dapper.Storage.Options
 
         public static ClientSecrets MapClientSecrets(this Secret secret)
         {
-            return new ClientSecrets()
+            return new ClientSecrets
             {
                 Description = secret.Description,
                 Value = secret.Value,
@@ -321,9 +347,9 @@ namespace IdentityServer4.Dapper.Storage.Options
             };
         }
 
-        public static IdentityResource MapIdentityResource(this Entities.IdentityResources identityResources)
+        public static IdentityResource MapIdentityResource(this IdentityResources identityResources)
         {
-            return new IdentityResource()
+            return new IdentityResource
             {
                 Name = identityResources.Name,
                 DisplayName = identityResources.DisplayName,
@@ -335,9 +361,9 @@ namespace IdentityServer4.Dapper.Storage.Options
             };
         }
 
-        public static Entities.IdentityResources MapIdentityResources(this IdentityResource identityResource)
+        public static IdentityResources MapIdentityResources(this IdentityResource identityResource)
         {
-            return new Entities.IdentityResources()
+            return new IdentityResources
             {
                 Enabled = identityResource.Enabled,
                 Name = identityResource.Name,
@@ -351,7 +377,7 @@ namespace IdentityServer4.Dapper.Storage.Options
 
         public static PersistedGrant MapPersistedGrant(this PersistedGrants persistedGrants)
         {
-            return new PersistedGrant()
+            return new PersistedGrant
             {
                 Key = persistedGrants.Key,
                 Type = persistedGrants.Type,
@@ -365,7 +391,7 @@ namespace IdentityServer4.Dapper.Storage.Options
 
         public static PersistedGrants MapPersistedGrants(this PersistedGrant persistedGrant)
         {
-            return new PersistedGrants()
+            return new PersistedGrants
             {
                 Key = persistedGrant.Key,
                 Type = persistedGrant.Type,

@@ -1,7 +1,7 @@
-﻿using IdentityServer4.Dapper.Storage.Options;
-using Microsoft.Extensions.Hosting;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
+using IdentityServer4.Dapper.Storage.Options;
+using Microsoft.Extensions.Hosting;
 
 namespace IdentityServer4.Dapper.Storage.Services
 {

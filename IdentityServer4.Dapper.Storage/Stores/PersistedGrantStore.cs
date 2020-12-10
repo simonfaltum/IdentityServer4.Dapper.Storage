@@ -1,9 +1,9 @@
-﻿using IdentityServer4.Dapper.Storage.DataLayer;
-using IdentityServer4.Models;
-using IdentityServer4.Stores;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using IdentityServer4.Dapper.Storage.DataLayer;
+using IdentityServer4.Models;
+using IdentityServer4.Stores;
 
 namespace IdentityServer4.Dapper.Storage.Stores
 {
@@ -37,20 +37,15 @@ namespace IdentityServer4.Dapper.Storage.Stores
             return result;
         }
 
-        public async Task RemoveAllAsync(string subjectId, string clientId)
+        public async Task<IEnumerable<PersistedGrant>> GetAllAsync(PersistedGrantFilter filter)
         {
-            //var persistedGrants = await _persistedGrantProvider.GetAll(subjectId, clientId);
+            var results = await _persistedGrantProvider.GetAll(filter.SubjectId);
 
-            await _persistedGrantProvider.RemoveAll(subjectId, clientId);
+            return results;
         }
 
-        public async Task RemoveAllAsync(string subjectId, string clientId, string type)
-        {
-            //var persistedGrants = await _persistedGrantProvider.GetAll(subjectId, clientId, type);
 
-            await _persistedGrantProvider.RemoveAll(subjectId, clientId, type);
-        }
-
+   
         public async Task RemoveAsync(string key)
         {
             var persistedGrant = await _persistedGrantProvider.Get(key);
@@ -58,6 +53,12 @@ namespace IdentityServer4.Dapper.Storage.Stores
             {
                 await _persistedGrantProvider.Remove(key);
             }
+        }
+
+        public async Task RemoveAllAsync(PersistedGrantFilter filter)
+        {
+            //throw new NotImplementedException();
+            await _persistedGrantProvider.RemoveAll(filter.SubjectId, filter.ClientId, filter.Type);
         }
 
         public async Task StoreAsync(PersistedGrant token)

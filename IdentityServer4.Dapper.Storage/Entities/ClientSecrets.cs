@@ -11,7 +11,5 @@ namespace IdentityServer4.Dapper.Storage.Entities
         public string Type { get; set; }
         public DateTime Created { get; set; } = DateTime.UtcNow;
         public int ClientId { get; set; }
-
-
     }
 }

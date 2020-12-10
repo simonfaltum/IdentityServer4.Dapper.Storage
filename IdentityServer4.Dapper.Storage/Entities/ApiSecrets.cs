@@ -2,7 +2,7 @@
 
 namespace IdentityServer4.Dapper.Storage.Entities
 {
-    public class ApiSecrets
+    public class ApiResourceSecrets
     {
         public int Id { get; set; }
         public string Description { get; set; }
@@ -11,6 +11,5 @@ namespace IdentityServer4.Dapper.Storage.Entities
         public string Type { get; set; }
         public DateTime Created { get; set; } = DateTime.UtcNow;
         public int ApiResourceId { get; set; }
-
     }
 }

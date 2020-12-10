@@ -12,15 +12,13 @@ namespace IdentityServer4.Storage.DatabaseScripts.DbUp
     /// </summary>
     public static class IdentityServerDbScriptsExtensions
     {
-
-
         public static IIdentityServerBuilder AddDbUpDatabaseScripts(this IIdentityServerBuilder builder, Action<DBProviderOptions> dbProviderOptionsAction = null)
         {
             var options = GetDefaultOptions();
             dbProviderOptionsAction?.Invoke(options);
             builder.Services.AddSingleton(options);
             builder.Services.TryAddTransient<IIdentityServerConfigService, IdentityServerConfigService>();
-            builder.Services.TryAddTransient<IIdentityServerMigrations, Migrations>();
+            builder.Services.TryAddTransient<IIdentityServerMigrations, DefaultIdentityServerMigrations>();
             return builder;
         }
         public static DBProviderOptions GetDefaultOptions()
@@ -29,8 +27,5 @@ namespace IdentityServer4.Storage.DatabaseScripts.DbUp
             var options = new DBProviderOptions();
             return options;
         }
-
-
-
     }
 }

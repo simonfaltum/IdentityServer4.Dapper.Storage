@@ -1,10 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFrameworks>net5.0</TargetFrameworks>
     <Company>Very Good Consulting Company</Company>
     <Authors>Simon Faltum</Authors>
-    <Version>3.1.0.0</Version>
+    <Version>4.0.0.0</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Description>The library enables persistence storing for configuration and operational data the same way the EntitiyFramework library does (IdentityServer4.EntityFramework).</Description>
     <PackageProjectUrl>https://github.com/simonfaltum/IdentityServer4.Dapper.Storage</PackageProjectUrl>
@@ -17,9 +17,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Dapper" Version="2.0.30" />
-    <PackageReference Include="IdentityServer4" Version="3.1.0" />
-    <PackageReference Include="System.Data.SqlClient" Version="4.8.0" />
+    <PackageReference Include="Dapper" Version="2.0.78" />
+    <PackageReference Include="IdentityServer4" Version="4.1.1" />
+    <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="3.3.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="2.1.0" />
   </ItemGroup>
 
 </Project>
