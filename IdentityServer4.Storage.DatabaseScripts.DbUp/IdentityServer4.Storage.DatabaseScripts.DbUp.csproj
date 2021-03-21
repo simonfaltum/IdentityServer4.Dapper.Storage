@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
-    <Version>4.0.0.0</Version>
+    <Version>4.0.1.0</Version>
     <Authors>Simon Faltum</Authors>
     <Company>Very Good Consulting Company</Company>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
